@@ -7,3 +7,4 @@ app/teams.json
 app/downloads
 static/files/*
 postgres_data
+dump_*
