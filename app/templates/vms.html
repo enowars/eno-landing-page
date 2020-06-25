@@ -1,0 +1,50 @@
+{% extends "_base.html" %}
+{% block content %}
+    <div class="content-subpage">
+
+        <h2 class="content-head is-center"><i class="fa fa-desktop"></i> VMs</h2>
+        <div class="pure-g">
+            <div class="pure-u-1 maxw-1000 div-is-center">
+                <h1>Get around the resort.</h1>
+                    The resort is marvellous! Come and take a tour at the different places that can be discovered here. We call these places VMs. 
+                    No questions, please. Here, we want to introduce you to the Vulnbox VM.
+                <h2>Vulnbox</h2>
+                <p>
+                    This is the most important VM and the one on which your part of the game will take place. You'll get a bunch of
+                    services that you need to defend and find security vulnerabilities to attack other teams. You can find
+                    the IP address of your team on the <a href="/network.html"> network tab</a>.
+                    The Vulnbox can bei either <strong> hosted by yourself </strong> or <strong> provided to you by us</strong>. 
+                    See the instructions below for further details.
+                </p>
+
+                <h3>Vulnbox - Service Interaction</h3>
+                <p>
+                    The services run in their own docker container and are started via docker-compose. We have also included a systemd 
+                    file for docker that lets you monitor and control the services. You can use systemctl to start/stop/restart/inspect 
+                    a given service respectively:
+                </p>
+                <div class="code-block">
+                    <code>systemctl {start|stop|restart|status} dc@servicename</code>
+                </div>
+                <p>
+                    In order to inspect logs you can use journalctl like this:
+                </p>
+                <div class="code-block">
+                    <code>journalctl -u dc@servicename</code>
+                </div>
+                
+                <h3>Vulnbox provisioning</h3>
+                <h4>Relax and let us do the job</h4>
+                    Lay down on one of our nice pool loungers and put your feet up, we will take care of setting everything up for you. As soon as the 
+                    game starts, we will have a nice and ready machine at your disposal, it will be all yours. Everything will be connected and ready to exploit.
+                    
+                <h4>Bring your own</h4>
+                    You don't trust us? You think you can do better than we do? Then feel free to bring your own Gear. <br>
+                    <i> We will announce how to install all necessary components on your own machine soon. </i>  <br>  <br>  <br>
+                
+               
+            </div>
+        </div>
+
+    </div>
+{% endblock %}

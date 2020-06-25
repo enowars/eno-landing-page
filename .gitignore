@@ -1,0 +1,9 @@
+.DS_Store
+app/__pycache__/
+app/session_data.sqlite3
+.idea/
+certbot/
+app/teams.json
+app/downloads
+static/files/*
+postgres_data
