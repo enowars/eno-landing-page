@@ -745,7 +745,7 @@ def page_register():
                                    captcha=captcha,
                                    captcha_token=token,
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
-        """
+
         if not is_valid_password(password_provided):
             token, captcha = generate_captcha_n_save_token()
             return render_template("register.html",
@@ -759,7 +759,7 @@ def page_register():
                                    captcha=captcha,
                                    captcha_token=token,
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
-        """
+
         if len(team_name_provided) < 4 or len(team_name_provided) > 20:
             token, captcha = generate_captcha_n_save_token()
             return render_template("register.html",
