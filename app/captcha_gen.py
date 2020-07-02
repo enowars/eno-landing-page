@@ -22,7 +22,7 @@ def _draw_dots(draw_context, width, height, amount=60, max_radius=8):
                              fill="#000000")
 
 
-def generate_captcha(text=None, image_width=400, image_height=200, font_height=40, vertical_change_max=80):
+def generate_captcha(text=None, image_width=400, image_height=200, font_height=50, vertical_change_max=80):
     """
     Generates a black and white image containing the given text and some lines and ellipses.
     The image width should suit to the text length and font height.
