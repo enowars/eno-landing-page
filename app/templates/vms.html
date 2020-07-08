@@ -39,10 +39,37 @@
                     game starts, we will have a nice and ready machine at your disposal, it will be all yours. Everything will be connected and ready to exploit.
                     
                 <h4>Bring your own</h4>
-		    <p>You don't want us to host the vulnbox? Then feel free to bring your own gear.</p> <br>
-                    <i> We will announce how to install all necessary components on your own machine soon. </i>  <br>  <br>  <br>
-                
-               
+                    <p>You don't want us to host the vulnbox? Then feel free to bring your own gear.</p>
+                        <h4>VPN using Wireguard</h4>
+                        <a href="https://www.wireguard.com/install/">Installation Guide</a>
+                        <p>You need to download the configuration file from the provided vulnbox. The config will be in:</p>
+                        <div class="code-block">
+                            <code>/etc/wireguard/game.conf</code>
+                        </div>
+
+                        <p>Before you can spin up your own wireguard interface you need to change the endpoint in the configuration, so that your <code>game.conf</code> looks something like this:</p>
+
+                        <div class="code-block">
+                            <code>[Interface]
+                            PrivateKey = &lt;your privatekey&gt;
+                            Address = &lt;your gamenetwork ip&gt;/32
+
+                            [Peer]
+                            PublicKey = &lt;gamerouters publickey&gt;
+                            Endpoint = 34.107.33.147:51820
+                            AllowedIPs = 10.0.0.0/8
+                            PersistentKeepalive = 15
+                            </code>
+                        </div>
+
+                        <p>You can also set your Endpoint to <code>gateway.enowars.com:51820</code>.</p>
+
+                        <p>Now you need to down the wireguard interface on the provided vulnbox. You can do this using the following command:</p>
+                        <div class="code-block"><code>wg-quick down game</code></div>
+
+                        <p>Now you can use this configuration to start your wireguard interface.</p>
+			<h4>Services</h4>
+			<p>In order to get the services on your own hardware, you can either copy them from the vulnbox, or download it from a git repo which we will publish when the ctf starts.</p>
             </div>
         </div>
 
