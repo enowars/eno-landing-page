@@ -2,7 +2,7 @@ FROM python:alpine3.8
 
 RUN apk add --no-cache postgresql-dev gcc musl-dev \
     jpeg-dev zlib-dev freetype-dev
-RUN pip install flask gunicorn Flask-Mail psycopg2 Pillow
+RUN pip install flask gunicorn Flask-Mail psycopg2 Pillow apache-libcloud
 
 WORKDIR /app
 EXPOSE 8000
