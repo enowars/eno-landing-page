@@ -16,6 +16,10 @@ from PIL import Image
 from captcha_gen import generate_captcha
 from team_mail import get_emails
 
+## Google API
+from libcloud.compute.types import Provider
+from libcloud.compute.providers import get_driver
+
 app = Flask(__name__)
 app.config.from_pyfile('flask.cfg', silent=True)
 mail = Mail(app)
@@ -1333,7 +1337,8 @@ def page_img():
         abort(404)
 
     response = make_response(img[0].tobytes())
-    response.mimetype = img[1]
+    respofrom libcloud.compute.types import Provider
+from libcloud.compute.providers import get_drivernse.mimetype = img[1]
 
     return response
 
@@ -1346,7 +1351,8 @@ def download():
     if not session:
         return redirect("login.html")
 
-    try:
+    trfrom libcloud.compute.types import Provider
+from libcloud.compute.providers import get_drivery:
         file = request.args["file"]
     except KeyError:
         # bad request
@@ -1361,5 +1367,27 @@ def download():
 
     return send_from_directory(app.root_path + '/downloads/', filename, as_attachment=True)
 
+@app.route("/teamvm.html", methods=['GET','POST'])
+def page_teamvm():
+    session = get_session(request)
+
+    # redirect if user is not logged in
+    if not session:
+        return redirect("login.html")
+
+    if request.method == 'POST':
+        ComputeEngine = get_driver(Provider.GCE)
+        driver = ComputeEngine('start-restart-buttons@test-ctf-281408.iam.gserviceaccount.com',
+                'start_restart_key.json',
+                datacenter='europe-west3-b',
+                project='test-ctf-281408')
+
+        team_node = driver.ex_get_node(f'team{str(session[2])}')
+        if request.form['submit_button'] == 'restart':
+            reboot = team_node.reboot()
+        else:
+            abort(400)
+    else :
+        return render_template('teamvm.html')
 
 init_db()
