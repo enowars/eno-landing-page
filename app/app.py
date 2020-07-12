@@ -19,6 +19,7 @@ from team_mail import get_emails
 ## Google API
 from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
+from libcloud.compute.types import NodeState
 
 app = Flask(__name__)
 app.config.from_pyfile('flask.cfg', silent=True)
@@ -1337,8 +1338,7 @@ def page_img():
         abort(404)
 
     response = make_response(img[0].tobytes())
-    respofrom libcloud.compute.types import Provider
-from libcloud.compute.providers import get_drivernse.mimetype = img[1]
+    response.mimetype = img[1]
 
     return response
 
@@ -1351,8 +1351,7 @@ def download():
     if not session:
         return redirect("login.html")
 
-    trfrom libcloud.compute.types import Provider
-from libcloud.compute.providers import get_drivery:
+    try:
         file = request.args["file"]
     except KeyError:
         # bad request
@@ -1370,8 +1369,9 @@ from libcloud.compute.providers import get_drivery:
 @app.route("/teamvm.html", methods=['GET','POST'])
 def page_teamvm():
     session = get_session(request)
+    response = ""
+    #redirect if user is not logged in
 
-    # redirect if user is not logged in
     if not session:
         return redirect("login.html")
 
@@ -1381,13 +1381,30 @@ def page_teamvm():
                 'start_restart_key.json',
                 datacenter='europe-west3-b',
                 project='test-ctf-281408')
-
-        team_node = driver.ex_get_node(f'team{str(session[2])}')
+        try:
+            team_node = driver.ex_get_node(f'team{str(session[2])}')
+        except:
+            abort(400)
         if request.form['submit_button'] == 'restart':
-            reboot = team_node.reboot()
+            if team_node.state != NodeState.RUNNING:
+                try :
+                    start = team_node.start()
+                    response = "Start suceed" if start else "Failed start"
+                except:
+                    response = "Failed start"
+            else:
+                try :
+                    reboot = team_node.reboot()
+                    response = "Restart suceed" if reboot else "Failed start"
+                except:
+                    response="Failed reboot"
         else:
             abort(400)
-    else :
-        return render_template('teamvm.html')
+
+    return render_template('teamvm.html',
+        session=session,
+        verified=True,
+        active=True,
+        response=response)
 
 init_db()

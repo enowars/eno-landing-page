@@ -1,8 +1,11 @@
 FROM python:alpine3.8
 
 RUN apk add --no-cache postgresql-dev gcc musl-dev \
-    jpeg-dev zlib-dev freetype-dev
-RUN pip install flask gunicorn Flask-Mail psycopg2 Pillow apache-libcloud
+    jpeg-dev zlib-dev freetype-dev \
+    python3-dev libffi-dev
+
+RUN pip install --upgrade pip
+RUN pip install flask gunicorn Flask-Mail psycopg2 Pillow apache-libcloud cryptography
 
 WORKDIR /app
 EXPOSE 8000

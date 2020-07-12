@@ -8,6 +8,9 @@
               <form action="{{ url_for('page_teamvm') }}" method="post">
                 <button class="pure-button" type="submit" name="submit_button" value="restart"> Start/restart </button>
               </form>
+              {% if response != "" %}
+                <h3> {{response}} </h3>
+              {% endif %}
             {% else %}
                 <div class="pure-alert pure-alert-warning">
                     <span class="msg-type">Warning:</span>
