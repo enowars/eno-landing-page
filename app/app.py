@@ -1370,8 +1370,8 @@ def download():
 def page_teamvm():
     session = get_session(request)
     response = ""
-    #redirect if user is not logged in
 
+    #redirect if user is not logged in
     if not session:
         return redirect("login.html")
 
@@ -1389,13 +1389,13 @@ def page_teamvm():
             if team_node.state != NodeState.RUNNING:
                 try :
                     start = team_node.start()
-                    response = "Start suceed" if start else "Failed start"
+                    response = "Start succeeded" if start else "Failed start"
                 except:
                     response = "Failed start"
             else:
                 try :
                     reboot = team_node.reboot()
-                    response = "Restart suceed" if reboot else "Failed start"
+                    response = "Restart suceeded" if reboot else "Failed start"
                 except:
                     response="Failed reboot"
         else:
