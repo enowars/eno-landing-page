@@ -656,12 +656,14 @@ def page_login():
                                    email=email_provided,
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
 
+        """
         if not is_valid_password(password_provided):
             return render_template("login.html",
                                    msg="Wrong username / password",
                                    msg_type="error",
                                    email=email_provided,
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
+        """
 
         result = login(email_provided, password_provided)
 
@@ -991,11 +993,13 @@ def page_reset_password():
                                        msg_type="error",
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
 
+            """
             if not is_valid_password(password_provided):
                 return render_template("reset.html",
                                        msg="Password can only include the following characters: A-Z, a-z, 0-9, @#$%^&+=",
                                        msg_type="error",
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
+            """
 
             change_password_and_logout(user_id, password_provided)
             remove_reset_password_token(token)
@@ -1045,11 +1049,13 @@ def page_change_password():
                                    msg_type="error",
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
 
+        """
         if not is_valid_password(password_provided):
             return render_template("change-password.html",
                                    msg="Password can only include the following characters: A-Z, a-z, 0-9, @#$%^&+=",
                                    msg_type="error",
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
+        """
 
         change_password_and_logout(session[2], password_new_provided)
 
