@@ -78,15 +78,15 @@ Use secret/export?pw=*password from flask.cfg*
 
 ## Downloads
 
-Put all public or large files (e.g. vms) in  `/root/enoteams/static/files` and secret or small files (e.g. config files & keys) in `/root/enoteams/app/downloads/` at the registration host (enowars.com).
+Put all public or large files (e.g. vms) in  `/root/eno-landing-page/static/files` and secret or small files (e.g. config files & keys) in `/root/eno-landing-page/app/downloads/` at the registration host (enowars.com).
 Use the following name scheme:
 
-    root@localhost:~/enoteams/static/files# ls
+    root@localhost:~/eno-landing-page/static/files# ls
     team_router.tar.gz
     test_vm.tar.gz
     vm.tar.gz
 
-    root@localhost:~/enoteams/app/downloads# ls
+    root@localhost:~/eno-landing-page/app/downloads# ls
     team1.conf
     vm.key
 
