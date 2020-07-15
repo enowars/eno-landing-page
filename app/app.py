@@ -19,6 +19,7 @@ from team_mail import get_emails
 ## Hetzner API
 from hcloud import Client
 from hcloud.images.domain import Image
+from hcloud.locations.domain import Location
 from hcloud.server_types.domain import ServerType
 
 ## Google API
@@ -1383,31 +1384,44 @@ def page_teamvm():
     response = ""
 
     #redirect if user is not logged in
-    if not session:
-        return redirect("login.html")
+    # if not session:
+    #     return redirect("login.html")
 
     if request.method == 'POST':
-
-        client = Client(token="{VpFqje3tFiiT9gU6O4PJRoGJBEQ30U7NRBD6e8AC43mKcxQQCzmVe1SP4pxpcufZ}")
+        teamID = 3
+        client = Client(token="CLIENT TOKEN")
 
         if request.form['submit_button'] == 'create':
             try:
-                 # Please paste your API token here between the quotes
-                client_server = client.servers.create(name=f'team{str(session[2])}', server_type=ServerType(name="cx11"), image=Image(name="bambivulnbox-1594818256"))
-                server = client_server.server
-                root_password = response.root_password
+                client_images = client.images.get_all(label_selector="type=bambivulnbox", sort="created:desc")
+                image = client_images[0]
+                client_server = client.servers.create(name=f'team{teamID}', server_type=ServerType(name="cpx21"), image=image, location=Location(name="fsn1"))
+                root_password = client_server.root_password
                 response = f'Sucess ! Your password is {root_password}. Have fun !'
             except:
-                response = "Failed creation"
+                response = "Failed creation."
 
         elif request.form['submit_button'] == 'restart':
             try:
-                client_server = client.servers.get_by_name(f'team{str(session[2])}')
-                server = client_server.server
-                server.reboot()
+                client_server = client.servers.get_by_name(f'team{teamID}')
+                client_server.reboot()
                 response = 'Successful restart'
             except:
                 response = "Failed restart"
+        elif request.form['submit_button'] == 'power_off':
+            try:
+                client_server = client.servers.get_by_name(f'team{teamID}')
+                client_server.power_off()
+                response = 'Successful shutdown'
+            except:
+                response = "Failed shutdown"
+        elif request.form['submit_button'] == 'power_on':
+            try:
+                client_server = client.servers.get_by_name(f'team{teamID}')
+                client_server.power_on()
+                response = 'Successful start'
+            except:
+                response = "Failed start"
         else:
             abort(400)
 

@@ -8,6 +8,8 @@
               <form action="{{ url_for('page_teamvm') }}" method="post">
                 <button class="pure-button" type="submit" name="submit_button" value="create"> Create </button>
                 <button class="pure-button" type="submit" name="submit_button" value="restart"> Restart </button>
+                <button class="pure-button" type="submit" name="submit_button" value="power_off"> Shutdown </button>
+                <button class="pure-button" type="submit" name="submit_button" value="power_on"> Start </button>
               </form>
               {% if response != "" %}
                 <h3> {{response}} </h3>
