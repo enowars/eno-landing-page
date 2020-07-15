@@ -775,11 +775,11 @@ def page_register():
                                    registration_disabled=app.config['REGISTRATION_DISABLED'])
         """
 
-        if len(team_name_provided) < 4 or len(team_name_provided) > 20:
+        if len(team_name_provided) < 2 or len(team_name_provided) > 30:
             token, captcha = generate_captcha_n_save_token()
             return render_template("register.html",
                                    countries=countries,
-                                   msg="Team Name must be between 4 and 20 characters long",
+                                   msg="Team Name must be between 2 and 30 characters long",
                                    msg_type="error",
                                    email=email_provided,
                                    team_name=team_name_provided,
@@ -1105,11 +1105,11 @@ def page_edit():
                                    active=is_active_account(session[2]),
                                    team_data=get_team_data(session[2]))
 
-        if len(team_name_provided) < 4 or len(team_name_provided) > 20:
+        if len(team_name_provided) < 2 or len(team_name_provided) > 30:
             return render_template("edit.html",
                                    session=session,
                                    countries=countries,
-                                   msg="Team name must be between 4 and 20 characters long",
+                                   msg="Team name must be between 2 and 30 characters long",
                                    msg_type="error",
                                    logo=get_img_token(session[2]),
                                    verified=is_mail_verified(session[2]),
