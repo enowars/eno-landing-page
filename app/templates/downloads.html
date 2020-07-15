@@ -18,7 +18,7 @@ teamrouter.ova</a>, <a href="https://drive.google.com/file/d/1GN5QCESs35UVKTZd_A
                     {% endif %}
                     {% if download_options['DOWNLOAD_KEY_ENABLED'] %}
                         <li><i class="fa fa-download"></i>
-                            <a href="{{ url_for('download', file='key') }}">vm.key</a>
+                            <a href="{{ url_for('download', file='sshkey') }}">team{{ session[2] }}.key</a>
                         </li>
                     {% endif %}
                     {% for file in files %}
