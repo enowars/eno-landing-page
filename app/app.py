@@ -16,6 +16,11 @@ from PIL import Image
 from captcha_gen import generate_captcha
 from team_mail import get_emails
 
+## Hetzner API
+from hcloud import Client
+from hcloud.images.domain import Image
+from hcloud.server_types.domain import ServerType
+
 ## Google API
 from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
@@ -1376,28 +1381,27 @@ def page_teamvm():
         return redirect("login.html")
 
     if request.method == 'POST':
-        ComputeEngine = get_driver(Provider.GCE)
-        driver = ComputeEngine('start-restart-buttons@test-ctf-281408.iam.gserviceaccount.com',
-                'start_restart_key.json',
-                datacenter='europe-west3-b',
-                project='test-ctf-281408')
-        try:
-            team_node = driver.ex_get_node(f'team{str(session[2])}')
-        except:
-            abort(400)
-        if request.form['submit_button'] == 'restart':
-            if team_node.state != NodeState.RUNNING:
-                try :
-                    start = team_node.start()
-                    response = "Start succeeded" if start else "Failed start"
-                except:
-                    response = "Failed start"
-            else:
-                try :
-                    reboot = team_node.reboot()
-                    response = "Restart suceeded" if reboot else "Failed start"
-                except:
-                    response="Failed reboot"
+
+        client = Client(token="{VpFqje3tFiiT9gU6O4PJRoGJBEQ30U7NRBD6e8AC43mKcxQQCzmVe1SP4pxpcufZ}")
+
+        if request.form['submit_button'] == 'create':
+            try:
+                 # Please paste your API token here between the quotes
+                client_server = client.servers.create(name=f'team{str(session[2])}', server_type=ServerType(name="cx11"), image=Image(name="bambivulnbox-1594818256"))
+                server = client_server.server
+                root_password = response.root_password
+                response = f'Sucess ! Your password is {root_password}. Have fun !'
+            except:
+                response = "Failed creation"
+
+        elif request.form['submit_button'] == 'restart':
+            try:
+                client_server = client.servers.get_by_name(f'team{str(session[2])}')
+                server = client_server.server
+                server.reboot()
+                response = 'Successful restart'
+            except:
+                response = "Failed restart"
         else:
             abort(400)
 

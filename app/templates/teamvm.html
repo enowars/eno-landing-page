@@ -6,7 +6,8 @@
         <div class="pure-u-1 maxw-700 div-is-center">
             {% if verified and active %}
               <form action="{{ url_for('page_teamvm') }}" method="post">
-                <button class="pure-button" type="submit" name="submit_button" value="restart"> Start/restart </button>
+                <button class="pure-button" type="submit" name="submit_button" value="create"> Create </button>
+                <button class="pure-button" type="submit" name="submit_button" value="restart"> Restart </button>
               </form>
               {% if response != "" %}
                 <h3> {{response}} </h3>
