@@ -1384,44 +1384,58 @@ def page_teamvm():
     response = ""
 
     #redirect if user is not logged in
-    # if not session:
-    #     return redirect("login.html")
+    if not session:
+        return redirect("login.html")
 
     if request.method == 'POST':
-        teamID = 3
-        client = Client(token="CLIENT TOKEN")
+        teamID = str(session[2])
+        client = Client(token=app.config['HCLOUD_TOKEN'])
+        client_server = client.servers.get_by_name(f'team{teamID}')
 
-        if request.form['submit_button'] == 'create':
+        if request.form['submit_button'] == 'create' and client_server is None:
             try:
                 client_images = client.images.get_all(label_selector="type=bambivulnbox", sort="created:desc")
                 image = client_images[0]
                 client_server = client.servers.create(name=f'team{teamID}', server_type=ServerType(name="cpx21"), image=image, location=Location(name="fsn1"))
                 root_password = client_server.root_password
-                response = f'Sucess ! Your password is {root_password}. Have fun !'
+                response = f'Sucess ! Your password is {root_password}. Remember it and have fun !'
             except:
                 response = "Failed creation."
 
-        elif request.form['submit_button'] == 'restart':
-            try:
-                client_server = client.servers.get_by_name(f'team{teamID}')
-                client_server.reboot()
-                response = 'Successful restart'
-            except:
-                response = "Failed restart"
-        elif request.form['submit_button'] == 'power_off':
-            try:
-                client_server = client.servers.get_by_name(f'team{teamID}')
-                client_server.power_off()
-                response = 'Successful shutdown'
-            except:
-                response = "Failed shutdown"
-        elif request.form['submit_button'] == 'power_on':
-            try:
-                client_server = client.servers.get_by_name(f'team{teamID}')
-                client_server.power_on()
-                response = 'Successful start'
-            except:
-                response = "Failed start"
+        elif request.form['submit_button'] == 'restart' and client_server is not None:
+            if client_server.status == 'running':
+                try:
+                    client_server = client.servers.get_by_name(f'team{teamID}')
+                    client_server.reboot()
+                    response = 'Successful restart'
+                except:
+                    response = "Failed restart"
+            else :
+                response = 'Your VM is not running'
+        elif request.form['submit_button'] == 'power_off' and client_server is not None:
+            if client_server.status == 'running':
+                try:
+                    client_server = client.servers.get_by_name(f'team{teamID}')
+                    client_server.power_off()
+                    response = 'Successful shutdown'
+                except:
+                    response = "Failed shutdown"
+            else:
+                response = 'Your VM is not running'
+        elif request.form['submit_button'] == 'power_on' and client_server is not None:
+            if client_server.status == 'off':
+                try:
+                    client_server = client.servers.get_by_name(f'team{teamID}')
+                    client_server.power_on()
+                    response = 'Successful start'
+                except:
+                    response = "Failed start"
+            else:
+                response = 'Your VM is already running'
+        elif client_server is None:
+            response = "VM not created"
+        elif client_server is not None:
+            response = "VM already created"
         else:
             abort(400)
 
