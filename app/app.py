@@ -11,7 +11,7 @@ from configparser import ConfigParser
 from flask import Flask, request, render_template, redirect, abort, g, make_response, send_from_directory, jsonify
 from flask_mail import Mail, Message
 import psycopg2, psycopg2.extras
-from PIL import Image
+import PIL.Image
 
 from captcha_gen import generate_captcha
 from team_mail import get_emails
@@ -1223,7 +1223,7 @@ def page_img_upload():
         abort(400)
 
     try:
-        im = Image.open(io.BytesIO(request.data))
+        im = PIL.Image.open(io.BytesIO(request.data))
     except IOError as ex:
         return make_response("Image format could not be verified. Please try an other image.", 400)
 
