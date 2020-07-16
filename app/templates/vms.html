@@ -19,27 +19,17 @@
 
                 <h3>Vulnbox - Service Interaction</h3>
                 <p>
-                    The services run in their own docker container and are started via docker-compose. We have also included a systemd 
-                    file for docker that lets you monitor and control the services. You can use systemctl to start/stop/restart/inspect 
-                    a given service respectively:
+                    The services run in their own docker container and are started via docker-compose.
                 </p>
-                <div class="code-block">
-                    <code>systemctl {start|stop|restart|status} dc@servicename</code>
-                </div>
-                <p>
-                    In order to inspect logs you can use journalctl like this:
-                </p>
-                <div class="code-block">
-                    <code>journalctl -u dc@servicename</code>
-                </div>
                 
                 <h3>Vulnbox provisioning</h3>
-                <h4>Relax and let us do the job</h4>
-                    Lay down on one of our nice pool loungers and put your feet up, we will take care of setting everything up for you. As soon as the 
-                    game starts, we will have a nice and ready machine at your disposal, it will be all yours. Everything will be connected and ready to exploit.
+		<p>You will be able to start your vulnbox yourself when the ctf starts.</p>
+		<p>Navigate to the Vulnbox tab and hit "create" (this will do nothing before the start of the ctf). The vulnbox will get created and the initial root password and your vulnbox ip will be displayed.</p>
+		<p>After you have logged onto the vulnbox you can grab the openvpn config (/root/client.conf) and distribute it to all players of your team to connect to the competition.</p>
                     
                 <h4>Bring your own</h4>
                     <p>You don't want us to host the vulnbox? Then feel free to bring your own gear.</p>
+		    <p>Please have a look at the steps above as you also have to spin up your vulnbox to get all required config files and the services</p>
                         <h4>VPN using Wireguard</h4>
                         <a href="https://www.wireguard.com/install/">Installation Guide</a>
                         <p>You need to download the configuration file from the provided vulnbox. The config will be in:</p>
@@ -52,17 +42,15 @@
                         <div class="code-block">
                             <code>[Interface]
                             PrivateKey = &lt;your privatekey&gt;
-                            Address = &lt;your gamenetwork ip&gt;/32
+                            Address = 10.0.0.&lt; teamID &gt;/32
 
                             [Peer]
                             PublicKey = &lt;gamerouters publickey&gt;
-                            Endpoint = 34.107.33.147:51820
-                            AllowedIPs = 10.0.0.0/8
+                            Endpoint = vpn.bambi.ovh:51820
+                            AllowedIPs = 10.0.0.0/16
                             PersistentKeepalive = 15
                             </code>
                         </div>
-
-                        <p>You can also set your Endpoint to <code>gateway.enowars.com:51820</code>.</p>
 
                         <p>Now you need to down the wireguard interface on the provided vulnbox. You can do this using the following command:</p>
                         <div class="code-block"><code>wg-quick down game</code></div>

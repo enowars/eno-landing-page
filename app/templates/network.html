@@ -8,15 +8,15 @@
             <p>The internet is a vast space where you can find many wonderful things. How about a vacation at a beautiful resort? Here's how you get there:</p>
             <h4>Network IPs</h4>
             <p>The translation formula from team-id to IP is:<br>
-                TeamIp(X): X -> 10. ( X // 256 ) . ( X % 256 ) .1
+                TeamIp(X): X -> 10.0.0.X
             </p>
             <p>
                 <ul>
-                    <li><strong>10.0.1.1</strong> team1.enowars.com</li>
-                    <li><strong>10.0.2.1</strong> team2.enowars.com</li>
+                    <li><strong>10.0.0.1</strong> Team 1
+                    <li><strong>10.0.0.2</strong> Team 2
                     <li>...</li>
-                    <li><strong>10.1.255.1</strong> team511.enowars.com</li>
-                    <li><strong>10.2.0.1</strong> team512.enowars.com</li>
+                    <li><strong>10.0.0.254</strong> Team 254
+                    <li><strong>10.0.0.255</strong> Team 255
                 </ul>
             </p>
 
@@ -24,9 +24,8 @@
                 Some important IPs that you might need:
 
                 <ul>
-                    <li><strong>10.0.0.2:1337</strong> - The Flagbot where you can submit flags to on port <strong>1337</strong>.</li>
-                    <li><strong>10.0.0.1</strong> - The game Router you will use for routing.</li>
-                    <li><strong>10.0.0.2:80</strong> - The current score for every team participating the ctf</li>
+                    <li><strong>10.0.13.37:1337</strong> - The Flagbot where you can submit flags to on port <strong>1337</strong>.</li>
+                    <li><strong>10.0.1.1</strong> - The game Router you will use for routing (all traffic will reach you via this ip).</li>
                 </ul>
             </p>
             <!--h4>Routing</h4>
@@ -45,7 +44,7 @@
             </p>
 	    -->
 	    <p>The whole competition will take place within a VPN.</p>
-	    <p>More info soon!</p>
+	    <p>The openvpn config for your players to connect to the competition network will be in /root/client.conf on your vulnbox</p>
             <img src="img/nw-e4.png" style=" padding: 0; display: block; margin: 0 auto; max-height: 100%; max-width: 100%;">
         </div>
     </div>
