@@ -5,7 +5,7 @@ RUN apk add --no-cache postgresql-dev gcc musl-dev \
     python3-dev libffi-dev
 
 RUN pip install --upgrade pip
-RUN pip install flask gunicorn Flask-Mail psycopg2 Pillow apache-libcloud cryptography hcloud desec-dns-api
+RUN pip install requests==2.23.0 flask gunicorn Flask-Mail psycopg2 Pillow apache-libcloud cryptography hcloud desec-dns-api
 
 WORKDIR /app
 EXPOSE 8000
