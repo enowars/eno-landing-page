@@ -1196,7 +1196,7 @@ def page_downloads():
                                'DOWNLOAD_CONFIG_ENABLED': app.config['DOWNLOAD_CONFIG_ENABLED'] and
                                                           isfile(app.root_path + '/downloads/team' + str(session[2]) + '.conf'),
                                'DOWNLOAD_KEY_ENABLED': app.config['DOWNLOAD_KEY_ENABLED'] and
-                                                       isfile(app.root_path + '/downloads/vm.key')
+                                                       isfile(app.root_path + f'/downloads/{str(session[2])}.key')
                            },
                            files=files)
 
@@ -1392,34 +1392,77 @@ def page_teamvm():
     if not session:
         return redirect("login.html")
 
-    teamID = str(session[2])
-    client = Client(token=app.config['HCLOUD_TOKEN'])
-    client_server = client.servers.get_by_name(f'team{teamID}')
+    # DISABLED DUE TO API RATELIMITING (3600 requests/h)
+    status = ""
+    if False:
+        try:
+            teamID = str(session[2])
+            client = Client(token=app.config['HCLOUD_TOKEN'])
+            client_server = client.servers.get_by_name(f'team{teamID}')
 
-    if client_server is None:
-        status = "Server not Created"
-    else :
-        status = f'VM status : {client_server.status}'
+            if client_server is None:
+                status = "Server not Created"
+            else:
+                status = f'VM status : {client_server.status}'
+        except Exception as e:
+            print(e)
+            status = "Server not Created"
 
-    if request.method == 'POST':
+    if not app.config["RESTART_VM_ENABLED"] and str(session[2]) != "1":
+        response = ["Vulnboxes can only be created after the CTF has started!"]
+    elif request.method == 'POST':
+        teamID = str(session[2])
+        client = Client(token=app.config['HCLOUD_TOKEN'])
+        client_server = client.servers.get_by_name(f'team{teamID}')
+
+        with open(f"/secret/passwords/team{teamID}.txt", "r") as f:
+            root_password = f.read().strip()
+
+        with open(f"/secret/wireguard_configs/team{teamID}.conf", "r") as f:
+            wireguard_conf = f.read().strip()
+
+        user_data = f"""#!/bin/sh
+cat <<EOF >> /etc/wireguard/game.conf
+{wireguard_conf}
+EOF
+systemctl enable wg-quick@game
+systemctl start wg-quick@game
+# provision OpenVPN server for team access
+/opt/setup-team-openvpn.sh
+
+cat <<EOF | passwd
+{root_password}
+{root_password}
+EOF
+
+
+for service in $(ls /services/); do
+cd "/services/$service" && docker-compose up -d &
+done
+"""
+
         if request.form['submit_button'] == 'create' and client_server is None:
             try:
                 # Fetch all vulnbox images and take the most recent
                 client_images = client.images.get_all(label_selector="type=bambivulnbox", sort="created:desc")
                 image = client_images[0]
+                ssh_keys = client.ssh_keys.get_all()
 
                 # Create the server and display root password for the team
-                client_server = client.servers.create(name=f'team{teamID}', server_type=ServerType(name="cpx21"), image=image, location=Location(name="fsn1"))
-                root_password = client_server.root_password
-                response.append(f'Sucess ! Your password is {root_password}. Remember it and have fun !')
-
-                # Get the VM ip and configure DNS
+                client_server = client.servers.create(
+                    name=f'team{teamID}',
+                    ssh_keys=ssh_keys,
+                    server_type=ServerType(name=app.config["HCLOUD_VMTYPE"]),
+                    image=image,
+                    location=Location(name=app.config["HCLOUD_VMLOCATION"]),
+                    user_data=user_data,
+                )
+                # root_password = client_server.root_password
                 vm_ip = client_server.server.public_net.ipv4.ip
-                rrset = create_rrset(token=app.config['DSEC_TOKEN'], name="enowars.com",subname="team{}.vulnbox".format(teamID), type="A", ttl=60, records=[vm_ip])
-                response.append(f'Your IP is {vm_ip}.')
-                response.append(f'You can also try using your DNS Entry: { rrset.subname }.{ rrset.domain }.')
-            except:
-                response = ['Failed creation.']
+                response.append(f'Sucess ! Your password is {root_password} and your ip is {str(vm_ip)}. Remember it and have fun !')
+            except Exception as e:
+                print(e)
+                raise e
 
         elif request.form['submit_button'] == 'restart' and client_server is not None:
             if client_server.status == 'running':
