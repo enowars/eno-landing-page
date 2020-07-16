@@ -27,6 +27,9 @@ from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
 from libcloud.compute.types import NodeState
 
+## Desec DNS API
+from desec_dns_api.recordsets import create_rrset
+
 app = Flask(__name__)
 app.config.from_pyfile('flask.cfg', silent=True)
 mail = Mail(app)
@@ -1378,10 +1381,11 @@ def download():
 
     return send_from_directory(app.root_path + '/downloads/', filename, as_attachment=True)
 
+
 @app.route("/teamvm.html", methods=['GET','POST'])
 def page_teamvm():
     session = get_session(request)
-    response = ""
+    response = []
 
     #redirect if user is not logged in
     if not session:
@@ -1394,48 +1398,57 @@ def page_teamvm():
 
         if request.form['submit_button'] == 'create' and client_server is None:
             try:
+                # Fetch all vulnbox images and take the most recent
                 client_images = client.images.get_all(label_selector="type=bambivulnbox", sort="created:desc")
                 image = client_images[0]
+
+                # Create the server and display root password for the team
                 client_server = client.servers.create(name=f'team{teamID}', server_type=ServerType(name="cpx21"), image=image, location=Location(name="fsn1"))
                 root_password = client_server.root_password
-                response = f'Sucess ! Your password is {root_password}. Remember it and have fun !'
+                response.append(f'Sucess ! Your password is {root_password}. Remember it and have fun !')
+
+                # Get the VM ip and configure DNS
+                vm_ip = client_server.server.public_net.ipv4.ip
+                rrset = create_rrset(token=app.config['DSEC_TOKEN'], name="enowars.com",subname="team{}.vulnbox".format(teamID), type="A", ttl=60, records=[vm_ip])
+                response.append(f'Your IP is {vm_ip}.')
+                response.append(f'You can also try using your DNS Entry: { rrset.subname }.{ rrset.domain }.')
             except:
-                response = "Failed creation."
+                response = ['Failed creation.']
 
         elif request.form['submit_button'] == 'restart' and client_server is not None:
             if client_server.status == 'running':
                 try:
                     client_server = client.servers.get_by_name(f'team{teamID}')
                     client_server.reboot()
-                    response = 'Successful restart'
+                    response = ['Successful restart']
                 except:
-                    response = "Failed restart"
+                    response = ["Failed restart"]
             else :
-                response = 'Your VM is not running'
+                response = ['Your VM is not running']
         elif request.form['submit_button'] == 'power_off' and client_server is not None:
             if client_server.status == 'running':
                 try:
                     client_server = client.servers.get_by_name(f'team{teamID}')
                     client_server.power_off()
-                    response = 'Successful shutdown'
+                    response = ['Successful shutdown']
                 except:
-                    response = "Failed shutdown"
+                    response = ["Failed shutdown"]
             else:
-                response = 'Your VM is not running'
+                response = ['Your VM is not running']
         elif request.form['submit_button'] == 'power_on' and client_server is not None:
             if client_server.status == 'off':
                 try:
                     client_server = client.servers.get_by_name(f'team{teamID}')
                     client_server.power_on()
-                    response = 'Successful start'
+                    response = ['Successful start']
                 except:
-                    response = "Failed start"
+                    response = ["Failed start"]
             else:
-                response = 'Your VM is already running'
+                response = ['Your VM is already running']
         elif client_server is None:
-            response = "VM not created"
+            response = ["VM not created"]
         elif client_server is not None:
-            response = "VM already created"
+            response = ["VM already created"]
         else:
             abort(400)
 

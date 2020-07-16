@@ -11,8 +11,10 @@
                 <button class="pure-button" type="submit" name="submit_button" value="power_off"> Shutdown </button>
                 <button class="pure-button" type="submit" name="submit_button" value="power_on"> Start </button>
               </form>
-              {% if response != "" %}
-                <h3> {{response}} </h3>
+              {% if response != [] %}
+                {%for string in response%}
+                    <h3> {{string}} </h3>
+                {%endfor%}
               {% endif %}
             {% else %}
                 <div class="pure-alert pure-alert-warning">
