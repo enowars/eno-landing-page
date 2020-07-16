@@ -1386,16 +1386,22 @@ def download():
 def page_teamvm():
     session = get_session(request)
     response = []
+    status = ""
 
     #redirect if user is not logged in
     if not session:
         return redirect("login.html")
 
-    if request.method == 'POST':
-        teamID = str(session[2])
-        client = Client(token=app.config['HCLOUD_TOKEN'])
-        client_server = client.servers.get_by_name(f'team{teamID}')
+    teamID = str(session[2])
+    client = Client(token=app.config['HCLOUD_TOKEN'])
+    client_server = client.servers.get_by_name(f'team{teamID}')
 
+    if client_server is None:
+        status = "Server not Created"
+    else :
+        status = f'VM status : {client_server.status}'
+
+    if request.method == 'POST':
         if request.form['submit_button'] == 'create' and client_server is None:
             try:
                 # Fetch all vulnbox images and take the most recent
@@ -1456,6 +1462,7 @@ def page_teamvm():
         session=session,
         verified=True,
         active=True,
+        status=status,
         response=response)
 
 init_db()

@@ -5,6 +5,9 @@
     <div class="pure-g">
         <div class="pure-u-1 maxw-700 div-is-center">
             {% if verified and active %}
+              {% if status != "" %}
+                  <h3> {{status}} </h3>
+              {% endif %}
               <form action="{{ url_for('page_teamvm') }}" method="post">
                 <button class="pure-button" type="submit" name="submit_button" value="create"> Create </button>
                 <button class="pure-button" type="submit" name="submit_button" value="restart"> Restart </button>
@@ -13,7 +16,7 @@
               </form>
               {% if response != [] %}
                 {%for string in response%}
-                    <h3> {{string}} </h3>
+                    <h4> {{string}} </h4>
                 {%endfor%}
               {% endif %}
             {% else %}
