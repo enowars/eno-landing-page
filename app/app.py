@@ -1653,7 +1653,7 @@ done
                     f"Sucess ! Your password is {root_password} and your ip is {str(vm_ip)}. Remember it and have fun !"
                 )
                 send_one(
-                    "Your Vulnbox has been created successfully!\n\nYour ip: {str(vm_ip)}\nYour pw: {root_password}\n\nConnect via\n\tssh root@{str(vm_ip)}\n\nNote that it may take 2-3 minutes until you can login.\n\nENOWARS4 is proudly sponsored by Hetzner Cloud ( https://www.hetzner.com/cloud )",
+                    f"Your Vulnbox has been created successfully!\n\nYour ip: {str(vm_ip)}\nYour pw: {root_password}\n\nConnect via\n\tssh root@{str(vm_ip)}\n\nNote that it may take 2-3 minutes until you can login.\n\nENOWARS4 is proudly sponsored by Hetzner Cloud ( https://www.hetzner.com/cloud )",
                     "ENOWARS4 Vulnbox Credentials",
                     session[2],
                 )
