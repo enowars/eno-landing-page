@@ -95,16 +95,17 @@ def get_emails():
 
 
 def send_one(body, subject, user_id):
-    time.sleep(random.randint(1, 20))  # This one hurts ...
-    email = get_email(user_id)
-    msg = Message(body=body, subject=subject, sender="mail@enowars.com", recipients=email)
+    with app.app_context():
+        time.sleep(random.randint(1, 20))  # This one hurts ...
+        email = get_email(user_id)
+        msg = Message(body=body, subject=subject, sender="mail@enowars.com", recipients=email)
 
-    try:
-        mail.send(msg)
-    except Exception as ex:
-        print("Exception in send for team: " + email[0])
-        print(ex)
-        raise ex
+        try:
+            mail.send(msg)
+        except Exception as ex:
+            print("Exception in send for team: " + email[0])
+            print(ex)
+            raise ex
 
 
 def get_email(user_id):
