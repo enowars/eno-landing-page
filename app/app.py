@@ -14,7 +14,7 @@ import psycopg2, psycopg2.extras
 import PIL.Image
 
 from captcha_gen import generate_captcha
-from team_mail import get_emails
+from team_mail import get_emails, send_one
 
 ## Hetzner API
 from hcloud import Client
@@ -1467,6 +1467,7 @@ done
                 # root_password = client_server.root_password
                 vm_ip = client_server.server.public_net.ipv4.ip
                 response.append(f'Sucess ! Your password is {root_password} and your ip is {str(vm_ip)}. Remember it and have fun !')
+                send_one("Your Vulnbox has been created successfully!\n\nYour ip: {str(vm_ip)}\nYour pw: {root_password}\n\nConnect via\n\tssh root@{str(vm_ip)}\n\nNote that it may take 2-3 minutes until you can login.\n\nENOWARS4 is proudly sponsored by Hetzner ( https://www.hetzner.de/ )", "ENOWARS4 Vulnbox Credentials", session[2])
             except Exception as e:
                 print(e)
                 raise e
