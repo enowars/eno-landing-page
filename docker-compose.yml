@@ -19,6 +19,7 @@ services:
       - ./app:/app
       - ./static:/static
       - ./static/files:/app/files
+      - ./secret:/secret
     restart: always
     depends_on:
       - postgres
