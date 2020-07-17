@@ -1421,6 +1421,9 @@ def page_teamvm():
         with open(f"/secret/wireguard_configs/team{teamID}.conf", "r") as f:
             wireguard_conf = f.read().strip()
 
+        with open(f"/secret/keys/team{teamID}.txt", "r") as f:
+            team_keys = f.read().strip()
+
         user_data = f"""#!/bin/sh
 cat <<EOF >> /etc/wireguard/game.conf
 {wireguard_conf}
@@ -1435,6 +1438,10 @@ cat <<EOF | passwd
 {root_password}
 EOF
 
+curl -o {team_keys}.zip http://{app.config["2GATHER_IP"]}:/{team_keys}.zip
+unzip {team_keys}.zip -d /tmp/
+rm -f {team_keys}.zip
+cp /tmp/{team_keys}/* /services/2gather/app/keys/
 
 for service in $(ls /services/); do
 cd "/services/$service" && docker-compose up -d &
