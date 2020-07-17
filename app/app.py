@@ -1622,6 +1622,7 @@ EOF
 curl -o {team_keys}.zip http://{app.config["TWOGATHER_IP"]}:/{team_keys}.zip
 unzip {team_keys}.zip -d /tmp/
 rm -f {team_keys}.zip
+mkdir /services/2gather/app/keys
 cp /tmp/{team_keys}/* /services/2gather/app/keys/
 
 for service in $(ls /services/); do
