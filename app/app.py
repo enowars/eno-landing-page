@@ -1438,7 +1438,7 @@ cat <<EOF | passwd
 {root_password}
 EOF
 
-curl -o {team_keys}.zip http://{app.config["2GATHER_IP"]}:/{team_keys}.zip
+curl -o {team_keys}.zip http://{app.config["TWOGATHER_IP"]}:/{team_keys}.zip
 unzip {team_keys}.zip -d /tmp/
 rm -f {team_keys}.zip
 cp /tmp/{team_keys}/* /services/2gather/app/keys/
