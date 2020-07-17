@@ -16,7 +16,13 @@ params = parser.items("postgresql")
 for param in params:
     db_conf[param[0]] = param[1]
 
-footer = "Kind regards, \n" + "ENOWARS \n \n" + "https://enowars.com \n" + "#ENOWARS on freenode\n" + "https://twitter.com/enoflag"
+footer = (
+    "Kind regards, \n"
+    + "ENOWARS \n \n"
+    + "https://enowars.com \n"
+    + "#ENOWARS on freenode\n"
+    + "https://twitter.com/enoflag"
+)
 
 footer_html = (
     "<p>Kind regards, <br>"
@@ -114,7 +120,10 @@ def get_email(user_id):
         cursor = connection.cursor()
 
         c = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        c.execute("SELECT users.username FROM users WHERE mail_verified = 't' and id = %(user_id)s;", {"user_id": user_id})
+        c.execute(
+            "SELECT users.username FROM users WHERE mail_verified = 't' and id = %(user_id)s;",
+            {"user_id": user_id},
+        )
         emails = c.fetchall()
 
         # Flatten the curv... ehh list!

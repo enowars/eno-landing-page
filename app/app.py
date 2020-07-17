@@ -8,7 +8,17 @@ from os import listdir
 from os.path import isfile
 
 from configparser import ConfigParser
-from flask import Flask, request, render_template, redirect, abort, g, make_response, send_from_directory, jsonify
+from flask import (
+    Flask,
+    request,
+    render_template,
+    redirect,
+    abort,
+    g,
+    make_response,
+    send_from_directory,
+    jsonify,
+)
 from flask_mail import Mail, Message
 import psycopg2, psycopg2.extras
 import PIL.Image
@@ -31,13 +41,13 @@ from libcloud.compute.types import NodeState
 from desec_dns_api.recordsets import create_rrset
 
 app = Flask(__name__)
-app.config.from_pyfile('flask.cfg', silent=True)
+app.config.from_pyfile("flask.cfg", silent=True)
 mail = Mail(app)
 
 db_conf = {}
 parser = ConfigParser()
-parser.read('postgres.cfg')
-params = parser.items('postgresql')
+parser.read("postgres.cfg")
+params = parser.items("postgresql")
 for param in params:
     db_conf[param[0]] = param[1]
 
@@ -48,8 +58,10 @@ def create_session_authenticated(user_id):
     connection = get_db()
     c = connection.cursor()
     # TODO could generate an existing sid again and replace is not really an option here
-    c.execute("INSERT INTO sessions VALUES (default, %(sid)s, (SELECT NOW() + interval '1 hour'), %(user_id)s);",
-              {"sid": sid, "user_id": user_id})
+    c.execute(
+        "INSERT INTO sessions VALUES (default, %(sid)s, (SELECT NOW() + interval '1 hour'), %(user_id)s);",
+        {"sid": sid, "user_id": user_id},
+    )
     connection.commit()
 
     return sid, 3600  # 1 hour = 3600 seconds
@@ -89,8 +101,17 @@ def create_user(username, password, team_name, country, university):
         c.execute(
             "INSERT INTO users VALUES (default, %(username)s, %(salt)s, %(hash)s, %(team_name)s, %(country)s, \
             %(university)s, %(mail_verified)s, %(active)s);",
-            {"username": username, "salt": salt, "hash": user_hash, "team_name": team_name, "country": country,
-             "university": university, "mail_verified": False, "active": True})
+            {
+                "username": username,
+                "salt": salt,
+                "hash": user_hash,
+                "team_name": team_name,
+                "country": country,
+                "university": university,
+                "mail_verified": False,
+                "active": True,
+            },
+        )
     except psycopg2.errors.UniqueViolation as ex:  # username, team_name already exists
         connection.rollback()  # rollback to allow further db usage
         return 0
@@ -120,14 +141,19 @@ def get_session(request):
     c = connection.cursor()
 
     # reset expires_after to initial value
-    c.execute("UPDATE sessions SET expires_after = (SELECT NOW() + interval '1 hour') \
-              WHERE session_id = %(sid)s;", {"sid": session_cookie})
+    c.execute(
+        "UPDATE sessions SET expires_after = (SELECT NOW() + interval '1 hour') \
+              WHERE session_id = %(sid)s;",
+        {"sid": session_cookie},
+    )
     connection.commit()
 
     # max_age = 3600 seconds = 1 hour
-    c.execute("SELECT session_id, 3600 as max_age, user_id FROM sessions \
+    c.execute(
+        "SELECT session_id, 3600 as max_age, user_id FROM sessions \
               WHERE session_id = %(sid)s;",
-              {"sid": session_cookie})
+        {"sid": session_cookie},
+    )
     return c.fetchone()
 
 
@@ -160,16 +186,20 @@ def generate_verify_mail_token(user_id):
     c = connection.cursor()
 
     try:
-        c.execute("INSERT INTO tokens_mail VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
+        c.execute(
+            "INSERT INTO tokens_mail VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
         ON CONFLICT (user_id) DO UPDATE SET (token, expires_after) = (EXCLUDED.token, EXCLUDED.expires_after);",
-                  {"token": token, "user_id": user_id})
+            {"token": token, "user_id": user_id},
+        )
     # if we get the same token twice, try another one
     except psycopg2.errors.UniqueViolation:
         connection.rollback()
         token = secrets.token_urlsafe(32)
-        c.execute("INSERT INTO tokens_mail VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
+        c.execute(
+            "INSERT INTO tokens_mail VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
                 ON CONFLICT (user_id) DO UPDATE SET (token, expires_after) = (EXCLUDED.token, EXCLUDED.expires_after);",
-                  {"token": token, "user_id": user_id})
+            {"token": token, "user_id": user_id},
+        )
     finally:
         connection.commit()
 
@@ -183,16 +213,20 @@ def generate_reset_password_token(user_id):
     c = connection.cursor()
 
     try:
-        c.execute("INSERT INTO tokens_password VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
+        c.execute(
+            "INSERT INTO tokens_password VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
     ON CONFLICT (user_id) DO UPDATE SET (token, expires_after) = (EXCLUDED.token, EXCLUDED.expires_after);",
-                  {"token": token, "user_id": user_id})
+            {"token": token, "user_id": user_id},
+        )
     # if we get the same token twice, try another one
     except psycopg2.errors.UniqueViolation:
         connection.rollback()
         token = secrets.token_urlsafe(32)
-        c.execute("INSERT INTO tokens_password VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
+        c.execute(
+            "INSERT INTO tokens_password VALUES (default, %(token)s, (SELECT NOW() + interval '1 day'), %(user_id)s) \
             ON CONFLICT (user_id) DO UPDATE SET (token, expires_after) = (EXCLUDED.token, EXCLUDED.expires_after);",
-                  {"token": token, "user_id": user_id})
+            {"token": token, "user_id": user_id},
+        )
     finally:
         connection.commit()
 
@@ -203,8 +237,10 @@ def verify_mail(token):
     # get user_id from token
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT user_id FROM tokens_mail WHERE token = %(token)s AND expires_after >= (SELECT NOW());",
-              {"token": token})
+    c.execute(
+        "SELECT user_id FROM tokens_mail WHERE token = %(token)s AND expires_after >= (SELECT NOW());",
+        {"token": token},
+    )
     user_id = c.fetchone()
 
     # fail if wrong token
@@ -212,8 +248,10 @@ def verify_mail(token):
         return False
 
     # set mail verified and remove token
-    c.execute("UPDATE users SET mail_verified = %(verified)s WHERE id = %(user_id)s;",
-              {"verified": True, "user_id": user_id})
+    c.execute(
+        "UPDATE users SET mail_verified = %(verified)s WHERE id = %(user_id)s;",
+        {"verified": True, "user_id": user_id},
+    )
     c.execute("DELETE FROM tokens_mail WHERE token = %(token)s;", {"token": token})
     connection.commit()
 
@@ -223,28 +261,38 @@ def verify_mail(token):
 def invalidate_email(user_id):
     connection = get_db()
     c = connection.cursor()
-    c.execute("UPDATE users SET mail_verified = %(verified)s WHERE id = %(user_id)s;",
-              {"verified": False, "user_id": user_id})
+    c.execute(
+        "UPDATE users SET mail_verified = %(verified)s WHERE id = %(user_id)s;",
+        {"verified": False, "user_id": user_id},
+    )
     connection.commit()
 
 
 def get_team_data(user_id):
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT team_name, country, university, username FROM users WHERE id = %(user_id)s;", {"user_id": user_id})
+    c.execute(
+        "SELECT team_name, country, university, username FROM users WHERE id = %(user_id)s;",
+        {"user_id": user_id},
+    )
     return c.fetchone()
 
-footer = "Kind regards, \n" + \
-         "ENOWARS \n \n" + \
-         "https://enowars.com \n" + \
-         "#ENOWARS on freenode\n" + \
-         "https://twitter.com/enoflag"
 
-footer_html = "<p>Kind regards, <br>" + \
-              "ENOWARS <br> <br>" + \
-              "<a href=\"https://enowars.com\"> enowars.com</a> <br>" + \
-              "<a href=\"https://twitter.com/enoflag\">twitter.com/enoflag</a><br>" + \
-              "<a href=\"https://webchat.freenode.net/\">#ENOWARS on freenode</a></p>"
+footer = (
+    "Kind regards, \n"
+    + "ENOWARS \n \n"
+    + "https://enowars.com \n"
+    + "#ENOWARS on freenode\n"
+    + "https://twitter.com/enoflag"
+)
+
+footer_html = (
+    "<p>Kind regards, <br>"
+    + "ENOWARS <br> <br>"
+    + '<a href="https://enowars.com"> enowars.com</a> <br>'
+    + '<a href="https://twitter.com/enoflag">twitter.com/enoflag</a><br>'
+    + '<a href="https://webchat.freenode.net/">#ENOWARS on freenode</a></p>'
+)
 
 
 def send_reset_mail_to(username):
@@ -258,23 +306,31 @@ def send_reset_mail_to(username):
 
     token = generate_reset_password_token(r[0])
 
-    reset_pw = "Hello Team, \n" + \
-               "you receive this email because a password reset on https://enowars.com was requested. \n" + \
-               "Please open this link to reset your ENOWARS 4 account password: {}/reset.html?token={} .\n".format(
-                   app.config['APP_URL'], token) + \
-               "If you did not request a new password, please ignore this email.\n \n"
+    reset_pw = (
+        "Hello Team, \n"
+        + "you receive this email because a password reset on https://enowars.com was requested. \n"
+        + "Please open this link to reset your ENOWARS 4 account password: {}/reset.html?token={} .\n".format(
+            app.config["APP_URL"], token
+        )
+        + "If you did not request a new password, please ignore this email.\n \n"
+    )
 
-    reset_pw_html = "<p>Hello Team, <br>" + \
-                    "you receive this email because a password reset on <a href=\"https://enowars.com\">enowars.com</a> was requested. <br>" + \
-                    "Please open this link to reset your ENOWARS 4 account password: <a href=\"{}/reset.html?token={}\">Reset Password</a> .<br>".format(
-                        app.config['APP_URL'], token) + \
-                    "If you did not request a new password, please ignore this email.<br></p>\n"
+    reset_pw_html = (
+        "<p>Hello Team, <br>"
+        + 'you receive this email because a password reset on <a href="https://enowars.com">enowars.com</a> was requested. <br>'
+        + 'Please open this link to reset your ENOWARS 4 account password: <a href="{}/reset.html?token={}">Reset Password</a> .<br>'.format(
+            app.config["APP_URL"], token
+        )
+        + "If you did not request a new password, please ignore this email.<br></p>\n"
+    )
 
-    msg = Message(body=reset_pw + footer,
-                  subject="Reset Your ENOWARS 4 Account Password",
-                  sender="mail@enowars.com",
-                  recipients=[username],
-                  html=reset_pw_html + footer_html)
+    msg = Message(
+        body=reset_pw + footer,
+        subject="Reset Your ENOWARS 4 Account Password",
+        sender="mail@enowars.com",
+        recipients=[username],
+        html=reset_pw_html + footer_html,
+    )
     try:
         mail.send(msg)
     except Exception as ex:
@@ -287,21 +343,31 @@ def send_reset_mail_to(username):
 def send_activate_mail_to(user_id, username):
     token = generate_verify_mail_token(user_id)
 
-    activate = "Hello Team, \n" + \
-               "you receive this email because you created an account on https://enowars.com. \n" + \
-               "Please open this link to activate your ENOWARS 4 account: {}/verify.html?token={} .\n".format(app.config['APP_URL'], token) + \
-               "If you did not create an account, please ignore this email.\n \n"
+    activate = (
+        "Hello Team, \n"
+        + "you receive this email because you created an account on https://enowars.com. \n"
+        + "Please open this link to activate your ENOWARS 4 account: {}/verify.html?token={} .\n".format(
+            app.config["APP_URL"], token
+        )
+        + "If you did not create an account, please ignore this email.\n \n"
+    )
 
-    activate_html = "<p>Hello Team, <br>" + \
-                    "you receive this email because you created an account on <a href=\"https://enowars.com\">enowars.com</a>. <br>" + \
-                    "Please open this link to activate your ENOWARS 4 account: <a href=\"{}/verify.html?token={}\">Activate Account</a> .<br>".format(app.config['APP_URL'], token) + \
-                    "If you did not create an account, please ignore this email.<br></p>\n"
+    activate_html = (
+        "<p>Hello Team, <br>"
+        + 'you receive this email because you created an account on <a href="https://enowars.com">enowars.com</a>. <br>'
+        + 'Please open this link to activate your ENOWARS 4 account: <a href="{}/verify.html?token={}">Activate Account</a> .<br>'.format(
+            app.config["APP_URL"], token
+        )
+        + "If you did not create an account, please ignore this email.<br></p>\n"
+    )
 
-    msg = Message(body=activate + footer,
-                  subject="Activate Your ENOWARS 4 Account",
-                  sender="mail@enowars.com",
-                  recipients=[username],
-                  html=activate_html + footer_html)
+    msg = Message(
+        body=activate + footer,
+        subject="Activate Your ENOWARS 4 Account",
+        sender="mail@enowars.com",
+        recipients=[username],
+        html=activate_html + footer_html,
+    )
     try:
         mail.send(msg)
     except Exception as ex:
@@ -315,9 +381,11 @@ def verify_reset_password_token(token):
     connection = get_db()
     c = connection.cursor()
     # TODO timing attack? # TODO JOIN necessary as relational integrity should be secure anyway?
-    c.execute("SELECT user_id FROM tokens_password JOIN users on tokens_password.user_id = users.id WHERE \
+    c.execute(
+        "SELECT user_id FROM tokens_password JOIN users on tokens_password.user_id = users.id WHERE \
               token = %(token)s AND expires_after >= (SELECT NOW());",
-              {"token": token})
+        {"token": token},
+    )
     user_id = c.fetchone()
 
     if user_id is None:
@@ -336,8 +404,10 @@ def change_password_and_logout(user_id, password_new):
 
     connection = get_db()
     c = connection.cursor()
-    c.execute("UPDATE users SET salt = %(salt)s, hash = %(hash)s WHERE id = %(user_id)s;",
-              {"salt": salt, "hash": hash_new, "user_id": user_id})
+    c.execute(
+        "UPDATE users SET salt = %(salt)s, hash = %(hash)s WHERE id = %(user_id)s;",
+        {"salt": salt, "hash": hash_new, "user_id": user_id},
+    )
     c.execute("DELETE FROM sessions WHERE user_id = %(user_id)s;", {"user_id": user_id})
     connection.commit()
 
@@ -369,11 +439,15 @@ def edit_user(user_id, email_provided, team_name_provided, country_provided, uni
     try:
         c.execute(
             "UPDATE users SET username=(%(username)s), team_name=(%(team_name)s), country=(%(country)s), university=(%(university)s)"
-            "WHERE id=(%(user_id)s);", {"user_id": user_id,
-                                        "username": email_provided,
-                                        "team_name": team_name_provided,
-                                        "university": university_provided,
-                                        "country": country_provided})  # TODO ( ) needed?
+            "WHERE id=(%(user_id)s);",
+            {
+                "user_id": user_id,
+                "username": email_provided,
+                "team_name": team_name_provided,
+                "university": university_provided,
+                "country": country_provided,
+            },
+        )  # TODO ( ) needed?
     except psycopg2.errors.UniqueViolation as ex:  # username or team_name already exists
         connection.rollback()  # rollback to allow further db usage
         return False  # indicate error
@@ -428,9 +502,11 @@ def store_img(user_id, img_data, file_type):
     else:
         token = token[0]  # fetchone returns a tuple: (token, )
 
-    c.execute("INSERT INTO images VALUES (DEFAULT, %(token)s, %(user_id)s, %(type)s, %(img_data)s) \
+    c.execute(
+        "INSERT INTO images VALUES (DEFAULT, %(token)s, %(user_id)s, %(type)s, %(img_data)s) \
     ON CONFLICT (user_id) DO UPDATE SET (type, data) = (%(type)s, %(img_data)s);",
-              {"token": token, "user_id": user_id, "type": file_type, "img_data": img_data})
+        {"token": token, "user_id": user_id, "type": file_type, "img_data": img_data},
+    )
     connection.commit()
 
 
@@ -454,7 +530,8 @@ def get_users():
             JOIN countries ON countries.code = users.country \
             LEFT JOIN images on images.user_id = users.id \
             WHERE users.mail_verified AND users.active \
-            ORDER BY users.id;")
+            ORDER BY users.id;"
+    )
     users = c.fetchall()
 
     return users
@@ -465,7 +542,8 @@ def get_user_by_id(user_id):
     c = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     c.execute(
         "SELECT id, username, team_name, country, university, mail_verified, active FROM users WHERE id = %(user_id)s;",
-        {"user_id": user_id})
+        {"user_id": user_id},
+    )
     user = c.fetchone()
 
     return user
@@ -506,7 +584,8 @@ def generate_captcha_n_save_token():
     # TODO could generate an existing token again and replace is not really an option here
     c.execute(
         "INSERT INTO tokens_captcha VALUES (default, %(token)s, (SELECT NOW() + interval '5 minutes'), %(text)s);",
-        {"token": token, "text": text})
+        {"token": token, "text": text},
+    )
     connection.commit()
 
     return token, captcha_base64
@@ -528,34 +607,40 @@ def init_db():
         print("Couldn't connection to db")
         exit()
 
-
     try:
         c = connection.cursor()
-        c.execute("CREATE TABLE IF NOT EXISTS users (id SERIAL UNIQUE, username TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, hash TEXT NOT NULL, \
+        c.execute(
+            "CREATE TABLE IF NOT EXISTS users (id SERIAL UNIQUE, username TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, hash TEXT NOT NULL, \
                         team_name TEXT NOT NULL UNIQUE, country TEXT, university TEXT, \
-                        mail_verified BOOLEAN NOT NULL, active BOOLEAN NOT NULL, PRIMARY KEY(username));")
+                        mail_verified BOOLEAN NOT NULL, active BOOLEAN NOT NULL, PRIMARY KEY(username));"
+        )
         c.execute(
             "CREATE TABLE IF NOT EXISTS sessions (id SERIAL, session_id TEXT NOT NULL UNIQUE, expires_after TIMESTAMP NOT NULL, \
-            user_id INTEGER REFERENCES users(id), PRIMARY KEY(session_id));")
+            user_id INTEGER REFERENCES users(id), PRIMARY KEY(session_id));"
+        )
         c.execute(
             "CREATE TABLE IF NOT EXISTS tokens_mail (id SERIAL, token TEXT NOT NULL UNIQUE, expires_after TIMESTAMP NOT NULL, \
-            user_id INTEGER REFERENCES users(id) UNIQUE, PRIMARY KEY(token));")
+            user_id INTEGER REFERENCES users(id) UNIQUE, PRIMARY KEY(token));"
+        )
         c.execute(
             "CREATE TABLE IF NOT EXISTS tokens_password (id SERIAL, token TEXT NOT NULL UNIQUE, expires_after TIMESTAMP NOT NULL, \
-            user_id INTEGER REFERENCES users(id) UNIQUE, PRIMARY KEY(token));")
+            user_id INTEGER REFERENCES users(id) UNIQUE, PRIMARY KEY(token));"
+        )
         c.execute(
             "CREATE TABLE IF NOT EXISTS images (id SERIAL, token TEXT NOT NULL UNIQUE, user_id INTEGER REFERENCES users(id) UNIQUE, \
-            type TEXT NOT NULL, data BYTEA NOT NULL, PRIMARY KEY(token));")
+            type TEXT NOT NULL, data BYTEA NOT NULL, PRIMARY KEY(token));"
+        )
         c.execute(
             "CREATE TABLE IF NOT EXISTS tokens_captcha (id SERIAL, token TEXT NOT NULL UNIQUE, expires_after TIMESTAMP NOT NULL, \
-            text TEXT NOT NULL, PRIMARY KEY(token));")
+            text TEXT NOT NULL, PRIMARY KEY(token));"
+        )
         connection.commit()
 
     except (Exception, psycopg2.Error) as error:
         print("Error while connecting to PostgreSQL", error)
     finally:
         # closing database connection.
-        if (connection):
+        if connection:
             cursor.close()
             connection.close()
             print("PostgreSQL connection is closed")
@@ -571,7 +656,7 @@ def get_db():
     """Opens a new database connection if there is none yet for the
     current application context.
     """
-    if not hasattr(g, 'postgres_db'):
+    if not hasattr(g, "postgres_db"):
         g.postgres_db = connect_db()
     return g.postgres_db
 
@@ -579,7 +664,7 @@ def get_db():
 @app.teardown_appcontext
 def close_db(error):
     """Closes the database again at the end of the request."""
-    if hasattr(g, 'postgres_db'):
+    if hasattr(g, "postgres_db"):
         g.postgres_db.close()
 
 
@@ -588,7 +673,7 @@ def is_valid_email(email):
 
 
 def is_valid_password(password):
-    return re.match(r'[A-Za-z0-9@#$%^&+=]{8,265}', password)
+    return re.match(r"[A-Za-z0-9@#$%^&+=]{8,265}", password)
 
 
 def is_valid_country(country_code):
@@ -630,21 +715,21 @@ def is_valid_captcha(captcha_provided, token_provided):
 def page_index():
     session = get_session(request)
 
-    return render_template("index.html",
-                           session=session,
-                           registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "index.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+    )
 
 
 @app.route("/legal.html")
 def page_legal():
     session = get_session(request)
 
-    return render_template("legal.html",
-                           session=session,
-                           registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "legal.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+    )
 
 
-@app.route("/login.html", methods=['GET', 'POST'])
+@app.route("/login.html", methods=["GET", "POST"])
 def page_login():
     # redirect if user is already logged in
     if get_session(request):
@@ -659,11 +744,13 @@ def page_login():
 
         # TODO not distinguishing between invalid mail and wrong password could be more secure
         if not is_valid_email(email_provided):
-            return render_template("login.html",
-                                   msg="E-Mail should be a valid E-Mail address",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "login.html",
+                msg="E-Mail should be a valid E-Mail address",
+                msg_type="error",
+                email=email_provided,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         """
         if not is_valid_password(password_provided):
@@ -677,23 +764,25 @@ def page_login():
         result = login(email_provided, password_provided)
 
         if result is None:
-            return render_template("login.html",
-                                   msg="Wrong username / password",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "login.html",
+                msg="Wrong username / password",
+                msg_type="error",
+                email=email_provided,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         # redirect on successful login
         response = redirect("edit.html")
-        response.set_cookie(key="session", value=result[0],
-                            max_age=result[1], httponly=True)
+        response.set_cookie(key="session", value=result[0], max_age=result[1], httponly=True)
         return response
     else:
-        return render_template("login.html",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        return render_template(
+            "login.html", registration_disabled=app.config["REGISTRATION_DISABLED"]
+        )
 
 
-@app.route("/logout.html", methods=['POST'])
+@app.route("/logout.html", methods=["POST"])
 def page_logout():
     session = get_session(request)
 
@@ -712,7 +801,7 @@ def page_logout():
 
 
 # noinspection PyUnboundLocalVariable
-@app.route("/register.html", methods=['GET', 'POST'])
+@app.route("/register.html", methods=["GET", "POST"])
 def page_register():
     # redirect if user is already logged in
     if get_session(request):
@@ -721,7 +810,7 @@ def page_register():
     countries = get_countries(request)
 
     if request.method == "POST":
-        if app.config['REGISTRATION_DISABLED']:
+        if app.config["REGISTRATION_DISABLED"]:
             abort(400)
         try:
             email_provided = request.form["email"]
@@ -736,31 +825,35 @@ def page_register():
 
         if not is_valid_email(email_provided):
             token, captcha = generate_captcha_n_save_token()
-            return render_template("register.html",
-                                   countries=countries,
-                                   msg="E-Mail is not a valid E-Mail address",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   team_name=team_name_provided,
-                                   country=country_provided,
-                                   university=university_provided,
-                                   captcha=captcha,
-                                   captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "register.html",
+                countries=countries,
+                msg="E-Mail is not a valid E-Mail address",
+                msg_type="error",
+                email=email_provided,
+                team_name=team_name_provided,
+                country=country_provided,
+                university=university_provided,
+                captcha=captcha,
+                captcha_token=token,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         if len(password_provided) < 8 or len(password_provided) > 256:
             token, captcha = generate_captcha_n_save_token()
-            return render_template("register.html",
-                                   countries=countries,
-                                   msg="Password should be between 8 and 256 characters long",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   team_name=team_name_provided,
-                                   country=country_provided,
-                                   university=university_provided,
-                                   captcha=captcha,
-                                   captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "register.html",
+                countries=countries,
+                msg="Password should be between 8 and 256 characters long",
+                msg_type="error",
+                email=email_provided,
+                team_name=team_name_provided,
+                country=country_provided,
+                university=university_provided,
+                captcha=captcha,
+                captcha_token=token,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         """
         if not is_valid_password(password_provided):
@@ -780,129 +873,154 @@ def page_register():
 
         if len(team_name_provided) < 2 or len(team_name_provided) > 30:
             token, captcha = generate_captcha_n_save_token()
-            return render_template("register.html",
-                                   countries=countries,
-                                   msg="Team Name must be between 2 and 30 characters long",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   team_name=team_name_provided,
-                                   country=country_provided,
-                                   university=university_provided,
-                                   captcha=captcha,
-                                   captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "register.html",
+                countries=countries,
+                msg="Team Name must be between 2 and 30 characters long",
+                msg_type="error",
+                email=email_provided,
+                team_name=team_name_provided,
+                country=country_provided,
+                university=university_provided,
+                captcha=captcha,
+                captcha_token=token,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         if not is_valid_country(country_provided):
             token, captcha = generate_captcha_n_save_token()
-            return render_template("register.html",
-                                   countries=countries,
-                                   msg="Country code is not valid. Plz don't hack us.",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   team_name=team_name_provided,
-                                   country=country_provided,
-                                   university=university_provided,
-                                   captcha=captcha,
-                                   captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "register.html",
+                countries=countries,
+                msg="Country code is not valid. Plz don't hack us.",
+                msg_type="error",
+                email=email_provided,
+                team_name=team_name_provided,
+                country=country_provided,
+                university=university_provided,
+                captcha=captcha,
+                captcha_token=token,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         if not is_valid_university(university_provided):
             token, captcha = generate_captcha_n_save_token()
-            return render_template("register.html",
-                                   countries=countries,
-                                   msg="University cannot have more than 70 characters.",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   team_name=team_name_provided,
-                                   country=country_provided,
-                                   university=university_provided,
-                                   captcha=captcha,
-                                   captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "register.html",
+                countries=countries,
+                msg="University cannot have more than 70 characters.",
+                msg_type="error",
+                email=email_provided,
+                team_name=team_name_provided,
+                country=country_provided,
+                university=university_provided,
+                captcha=captcha,
+                captcha_token=token,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         if not is_valid_captcha(captcha_provided, captcha_token_provided):
             token, captcha = generate_captcha_n_save_token()
-            return render_template("register.html",
-                                   countries=countries,
-                                   msg="CAPTCHA not solved correctly",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   team_name=team_name_provided,
-                                   country=country_provided,
-                                   university=university_provided,
-                                   captcha=captcha,
-                                   captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "register.html",
+                countries=countries,
+                msg="CAPTCHA not solved correctly",
+                msg_type="error",
+                email=email_provided,
+                team_name=team_name_provided,
+                country=country_provided,
+                university=university_provided,
+                captcha=captcha,
+                captcha_token=token,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
-        user_id = create_user(email_provided, password_provided, team_name_provided, country_provided,
-                              university_provided)
+        user_id = create_user(
+            email_provided,
+            password_provided,
+            team_name_provided,
+            country_provided,
+            university_provided,
+        )
 
         if not user_id:
             token, captcha = generate_captcha_n_save_token()
-            return render_template("register.html",
-                                   countries=countries,
-                                   msg="Email or Team already exists",
-                                   msg_type="error",
-                                   email=email_provided,
-                                   team_name=team_name_provided,
-                                   country=country_provided,
-                                   university=university_provided,
-                                   captcha=captcha,
-                                   captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "register.html",
+                countries=countries,
+                msg="Email or Team already exists",
+                msg_type="error",
+                email=email_provided,
+                team_name=team_name_provided,
+                country=country_provided,
+                university=university_provided,
+                captcha=captcha,
+                captcha_token=token,
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         send_activate_mail_to(user_id, email_provided)
 
         # TODO POST-REDIRECT-GET redirect to edit.html?
-        return render_template("login.html", msg="Account created. Activation mail sent.", msg_type="success",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        return render_template(
+            "login.html",
+            msg="Account created. Activation mail sent.",
+            msg_type="success",
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
+        )
     else:
         # place captcha image directly in the html so no storage is required
         token, captcha = generate_captcha_n_save_token()
-        return render_template("register.html",
-                               countries=countries,
-                               captcha=captcha,
-                               captcha_token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        return render_template(
+            "register.html",
+            countries=countries,
+            captcha=captcha,
+            captcha_token=token,
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
+        )
 
 
-@app.route("/verify.html", methods=['GET'])
+@app.route("/verify.html", methods=["GET"])
 def page_verify_mail():
     session = get_session(request)
     countries = get_countries(request)
 
     # verified sessions are good
     if session and is_mail_verified(session[2]):
-        print('verified')
-        return render_template("edit.html",
-                               session=session,
-                               countries=countries,
-                               msg="Mail already verified",
-                               msg_type="success",
-                               logo=get_img_token(session[2]),
-                               verified=is_mail_verified(session[2]),
-                               active=is_active_account(session[2]),
-                               team_data=get_team_data(session[2]),
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        print("verified")
+        return render_template(
+            "edit.html",
+            session=session,
+            countries=countries,
+            msg="Mail already verified",
+            msg_type="success",
+            logo=get_img_token(session[2]),
+            verified=is_mail_verified(session[2]),
+            active=is_active_account(session[2]),
+            team_data=get_team_data(session[2]),
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
+        )
 
     try:
         token = request.args["token"]
     except KeyError:
-        print('key error')
+        print("key error")
         if session:
             # unverified session without token -> send new mail
             user = get_user_by_id(session[2])
             send_activate_mail_to(session[2], user["username"])
-            return render_template("edit.html",
-                                   session=session,
-                                   countries=countries,
-                                   msg="Another activation mail send.",
-                                   msg_type="info",
-                                   logo=get_img_token(session[2]),
-                                   verified=is_mail_verified(session[2]),
-                                   active=is_active_account(session[2]),
-                                   team_data=get_team_data(session[2]),
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "edit.html",
+                session=session,
+                countries=countries,
+                msg="Another activation mail send.",
+                msg_type="info",
+                logo=get_img_token(session[2]),
+                verified=is_mail_verified(session[2]),
+                active=is_active_account(session[2]),
+                team_data=get_team_data(session[2]),
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
         else:
             # no session no token -> redirect
             return redirect("login.html")
@@ -911,39 +1029,47 @@ def page_verify_mail():
 
     if success:
         if session:
-            return render_template("edit.html",
-                                   session=session,
-                                   countries=countries,
-                                   msg="Mail verified. Account activated.",
-                                   msg_type="success",
-                                   logo=get_img_token(session[2]),
-                                   verified=is_mail_verified(session[2]),
-                                   active=is_active_account(session[2]),
-                                   team_data=get_team_data(session[2]),
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
-        return render_template("login.html",
-                               msg="Mail verified. Account activated.",
-                               msg_type="success",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "edit.html",
+                session=session,
+                countries=countries,
+                msg="Mail verified. Account activated.",
+                msg_type="success",
+                logo=get_img_token(session[2]),
+                verified=is_mail_verified(session[2]),
+                active=is_active_account(session[2]),
+                team_data=get_team_data(session[2]),
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
+        return render_template(
+            "login.html",
+            msg="Mail verified. Account activated.",
+            msg_type="success",
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
+        )
 
     if session:
-        return render_template("edit.html",
-                               session=session,
-                               countries=countries,
-                               msg="Wrong token.",
-                               msg_type="error",
-                               logo=get_img_token(session[2]),
-                               verified=is_mail_verified(session[2]),
-                               active=is_active_account(session[2]),
-                               team_data=get_team_data(session[2]),
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
-    return render_template("login.html",
-                           msg="Wrong token.",
-                           msg_type="error",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        return render_template(
+            "edit.html",
+            session=session,
+            countries=countries,
+            msg="Wrong token.",
+            msg_type="error",
+            logo=get_img_token(session[2]),
+            verified=is_mail_verified(session[2]),
+            active=is_active_account(session[2]),
+            team_data=get_team_data(session[2]),
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
+        )
+    return render_template(
+        "login.html",
+        msg="Wrong token.",
+        msg_type="error",
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
+    )
 
 
-@app.route("/reset.html", methods=['GET', 'POST'])
+@app.route("/reset.html", methods=["GET", "POST"])
 def page_reset_password():
     # redirect if user is already logged in
     if get_session(request):
@@ -959,25 +1085,31 @@ def page_reset_password():
                 abort(400)
 
             if not is_valid_email(email_provided):
-                return render_template("reset.html",
-                                       msg="E-Mail is not a valid E-Mail adress",
-                                       msg_type="error",
-                                       email=email_provided,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+                return render_template(
+                    "reset.html",
+                    msg="E-Mail is not a valid E-Mail adress",
+                    msg_type="error",
+                    email=email_provided,
+                    registration_disabled=app.config["REGISTRATION_DISABLED"],
+                )
 
             result = send_reset_mail_to(email_provided)
 
             if not result:
-                return render_template("reset.html",
-                                       msg="Unknown email",
-                                       msg_type="error",
-                                       email=email_provided,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+                return render_template(
+                    "reset.html",
+                    msg="Unknown email",
+                    msg_type="error",
+                    email=email_provided,
+                    registration_disabled=app.config["REGISTRATION_DISABLED"],
+                )
 
-            return render_template("login.html",
-                                   msg="Mail send",
-                                   msg_type="success",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "login.html",
+                msg="Mail send",
+                msg_type="success",
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
         else:
             # TODO validate data provided
             # token length?
@@ -986,10 +1118,12 @@ def page_reset_password():
             user_id = verify_reset_password_token(token)
 
             if user_id is None:
-                return render_template("login.html",
-                                       msg="Wrong token",
-                                       msg_type="error",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+                return render_template(
+                    "login.html",
+                    msg="Wrong token",
+                    msg_type="error",
+                    registration_disabled=app.config["REGISTRATION_DISABLED"],
+                )
 
             try:
                 password_provided = request.form["password"]
@@ -997,10 +1131,12 @@ def page_reset_password():
                 abort(400)
 
             if len(password_provided) < 8 or len(password_provided) > 256:
-                return render_template("reset.html",
-                                       msg="Password should be between 8 and 256 characters long",
-                                       msg_type="error",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+                return render_template(
+                    "reset.html",
+                    msg="Password should be between 8 and 256 characters long",
+                    msg_type="error",
+                    registration_disabled=app.config["REGISTRATION_DISABLED"],
+                )
 
             """
             if not is_valid_password(password_provided):
@@ -1013,10 +1149,12 @@ def page_reset_password():
             change_password_and_logout(user_id, password_provided)
             remove_reset_password_token(token)
 
-            return render_template("login.html",
-                                   msg="Password set. Logged out everywhere.",
-                                   msg_type="success",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "login.html",
+                msg="Password set. Logged out everywhere.",
+                msg_type="success",
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
     else:
         token = request.args.get("token")  # default: None
 
@@ -1027,11 +1165,12 @@ def page_reset_password():
 
         # GET without a token results in a page where users can enter their mail adress to request a password reset mail
         # GET with a token results in a page where users can enter the new password
-        return render_template("reset.html", token=token,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        return render_template(
+            "reset.html", token=token, registration_disabled=app.config["REGISTRATION_DISABLED"]
+        )
 
 
-@app.route("/change-password.html", methods=['GET', 'POST'])
+@app.route("/change-password.html", methods=["GET", "POST"])
 def page_change_password():
     session = get_session(request)
 
@@ -1047,16 +1186,20 @@ def page_change_password():
             abort(400)
 
         if not auth(session[2], password_provided):
-            return render_template("change-password.html",
-                                   msg="Wrong password.",
-                                   msg_type="error",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "change-password.html",
+                msg="Wrong password.",
+                msg_type="error",
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         if len(password_new_provided) < 8 or len(password_new_provided) > 256:
-            return render_template("change-password.html",
-                                   msg="Password should be between 8 and 256 characters long",
-                                   msg_type="error",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+            return render_template(
+                "change-password.html",
+                msg="Password should be between 8 and 256 characters long",
+                msg_type="error",
+                registration_disabled=app.config["REGISTRATION_DISABLED"],
+            )
 
         """
         if not is_valid_password(password_provided):
@@ -1069,16 +1212,21 @@ def page_change_password():
         change_password_and_logout(session[2], password_new_provided)
 
         # session is intentionally omitted so the user gets an logged out version of the page
-        return render_template("login.html",
-                               msg="Password set. Logged out everywhere.",
-                               msg_type="success",
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        return render_template(
+            "login.html",
+            msg="Password set. Logged out everywhere.",
+            msg_type="success",
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
+        )
     else:
-        return render_template("change-password.html", session=session,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+        return render_template(
+            "change-password.html",
+            session=session,
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
+        )
 
 
-@app.route("/edit.html", methods=['GET', 'POST'])
+@app.route("/edit.html", methods=["GET", "POST"])
 def page_edit():
     session = get_session(request)
 
@@ -1098,87 +1246,103 @@ def page_edit():
             abort(400)
 
         if not is_valid_email(email_provided):
-            return render_template("edit.html",
-                                   session=session,
-                                   countries=countries,
-                                   msg="E-mail is not a valid e-mail-address",
-                                   msg_type="error",
-                                   logo=get_img_token(session[2]),
-                                   verified=is_mail_verified(session[2]),
-                                   active=is_active_account(session[2]),
-                                   team_data=get_team_data(session[2]))
+            return render_template(
+                "edit.html",
+                session=session,
+                countries=countries,
+                msg="E-mail is not a valid e-mail-address",
+                msg_type="error",
+                logo=get_img_token(session[2]),
+                verified=is_mail_verified(session[2]),
+                active=is_active_account(session[2]),
+                team_data=get_team_data(session[2]),
+            )
 
         if len(team_name_provided) < 2 or len(team_name_provided) > 30:
-            return render_template("edit.html",
-                                   session=session,
-                                   countries=countries,
-                                   msg="Team name must be between 2 and 30 characters long",
-                                   msg_type="error",
-                                   logo=get_img_token(session[2]),
-                                   verified=is_mail_verified(session[2]),
-                                   active=is_active_account(session[2]),
-                                   team_data=get_team_data(session[2]))
+            return render_template(
+                "edit.html",
+                session=session,
+                countries=countries,
+                msg="Team name must be between 2 and 30 characters long",
+                msg_type="error",
+                logo=get_img_token(session[2]),
+                verified=is_mail_verified(session[2]),
+                active=is_active_account(session[2]),
+                team_data=get_team_data(session[2]),
+            )
 
         if not is_valid_country(country_provided):
-            return render_template("edit.html",
-                                   session=session,
-                                   countries=countries,
-                                   msg="Country code is not valid. Plz don't hack us.",
-                                   msg_type="error",
-                                   logo=get_img_token(session[2]),
-                                   verified=is_mail_verified(session[2]),
-                                   active=is_active_account(session[2]),
-                                   team_data=get_team_data(session[2]))
+            return render_template(
+                "edit.html",
+                session=session,
+                countries=countries,
+                msg="Country code is not valid. Plz don't hack us.",
+                msg_type="error",
+                logo=get_img_token(session[2]),
+                verified=is_mail_verified(session[2]),
+                active=is_active_account(session[2]),
+                team_data=get_team_data(session[2]),
+            )
 
         if not is_valid_university(university_provided):
-            return render_template("edit.html",
-                                   session=session,
-                                   countries=countries,
-                                   msg="University cannot have more than 70 characters.",
-                                   msg_type="error",
-                                   logo=get_img_token(session[2]),
-                                   verified=is_mail_verified(session[2]),
-                                   active=is_active_account(session[2]),
-                                   team_data=get_team_data(session[2]))
+            return render_template(
+                "edit.html",
+                session=session,
+                countries=countries,
+                msg="University cannot have more than 70 characters.",
+                msg_type="error",
+                logo=get_img_token(session[2]),
+                verified=is_mail_verified(session[2]),
+                active=is_active_account(session[2]),
+                team_data=get_team_data(session[2]),
+            )
 
         old_team_data = get_team_data(session[2])
-        success = edit_user(session[2], email_provided, team_name_provided, country_provided, university_provided)
+        success = edit_user(
+            session[2], email_provided, team_name_provided, country_provided, university_provided
+        )
 
         if not success:
-            return render_template("edit.html",
-                                   session=session,
-                                   countries=countries,
-                                   msg="E-mail-address or team name already exists",
-                                   msg_type="error",
-                                   logo=get_img_token(session[2]),
-                                   verified=is_mail_verified(session[2]),
-                                   active=is_active_account(session[2]),
-                                   team_data=old_team_data)
+            return render_template(
+                "edit.html",
+                session=session,
+                countries=countries,
+                msg="E-mail-address or team name already exists",
+                msg_type="error",
+                logo=get_img_token(session[2]),
+                verified=is_mail_verified(session[2]),
+                active=is_active_account(session[2]),
+                team_data=old_team_data,
+            )
 
         # mark email_verified as false if email changed
         if email_provided != old_team_data[3]:
             invalidate_email(session[2])
 
-        return render_template("edit.html",
-                               session=session,
-                               countries=countries,
-                               msg="Profile updated.",
-                               msg_type="success",
-                               logo=get_img_token(session[2]),
-                               verified=is_mail_verified(session[2]),
-                               active=is_active_account(session[2]),
-                               team_data=get_team_data(session[2]))
+        return render_template(
+            "edit.html",
+            session=session,
+            countries=countries,
+            msg="Profile updated.",
+            msg_type="success",
+            logo=get_img_token(session[2]),
+            verified=is_mail_verified(session[2]),
+            active=is_active_account(session[2]),
+            team_data=get_team_data(session[2]),
+        )
     else:
-        return render_template("edit.html",
-                               session=session,
-                               countries=countries,
-                               verified=is_mail_verified(session[2]),
-                               logo=get_img_token(session[2]),
-                               active=is_active_account(session[2]),
-                               team_data=get_team_data(session[2]))
+        return render_template(
+            "edit.html",
+            session=session,
+            countries=countries,
+            verified=is_mail_verified(session[2]),
+            logo=get_img_token(session[2]),
+            active=is_active_account(session[2]),
+            team_data=get_team_data(session[2]),
+        )
 
 
-@app.route("/downloads.html", methods=['GET'])
+@app.route("/downloads.html", methods=["GET"])
 def page_downloads():
     session = get_session(request)
 
@@ -1186,22 +1350,24 @@ def page_downloads():
     if not session:
         return redirect("login.html")
 
-    files = filter(lambda f: not f.startswith('.'), listdir(app.root_path + '/files'))
+    files = filter(lambda f: not f.startswith("."), listdir(app.root_path + "/files"))
 
-    return render_template("downloads.html",
-                           session=session,
-                           verified=is_mail_verified(session[2]),
-                           active=is_active_account(session[2]),
-                           download_options={
-                               'DOWNLOAD_CONFIG_ENABLED': app.config['DOWNLOAD_CONFIG_ENABLED'] and
-                                                          isfile(app.root_path + '/downloads/team' + str(session[2]) + '.conf'),
-                               'DOWNLOAD_KEY_ENABLED': app.config['DOWNLOAD_KEY_ENABLED'] and
-                                                       isfile(app.root_path + f'/downloads/{str(session[2])}.key')
-                           },
-                           files=files)
+    return render_template(
+        "downloads.html",
+        session=session,
+        verified=is_mail_verified(session[2]),
+        active=is_active_account(session[2]),
+        download_options={
+            "DOWNLOAD_CONFIG_ENABLED": app.config["DOWNLOAD_CONFIG_ENABLED"]
+            and isfile(app.root_path + "/downloads/team" + str(session[2]) + ".conf"),
+            "DOWNLOAD_KEY_ENABLED": app.config["DOWNLOAD_KEY_ENABLED"]
+            and isfile(app.root_path + f"/downloads/{str(session[2])}.key"),
+        },
+        files=files,
+    )
 
 
-@app.route("/upload.html", methods=['POST'])
+@app.route("/upload.html", methods=["POST"])
 def page_img_upload():
     session = get_session(request)
 
@@ -1217,9 +1383,11 @@ def page_img_upload():
         abort(400)
 
     # validate content type of the uploading image
-    if not (request.content_type == "image/png"
-            or request.content_type == "image/gif"
-            or request.content_type == "image/jpeg"):
+    if not (
+        request.content_type == "image/png"
+        or request.content_type == "image/gif"
+        or request.content_type == "image/jpeg"
+    ):
         abort(400)
 
     try:
@@ -1254,46 +1422,57 @@ def page_teams():
     users = get_users()
     countries = get_countries(request)
 
-    return render_template("teams.html",
-                           session=session,
-                           users=users,
-                           countries=countries,
-                                   registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "teams.html",
+        session=session,
+        users=users,
+        countries=countries,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
+    )
+
 
 @app.route("/network.html")
 def page_network():
     session = get_session(request)
-    return render_template("network.html",
-                           session=session,
-                           registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "network.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+    )
+
 
 @app.route("/rules.html")
 def page_rules():
     session = get_session(request)
-    return render_template("rules.html",
-                           session=session,
-                           registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "rules.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+    )
+
 
 @app.route("/vms.html")
 def page_vms():
     session = get_session(request)
-    return render_template("vms.html",
-                           session=session,
-                           registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "vms.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+    )
+
+
 @app.route("/faq.html")
 def page_faq():
     session = get_session(request)
-    return render_template("faq.html",
-                           session=session,
-                           registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "faq.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+    )
+
 
 @app.route("/information.html")
 def page_information():
     session = get_session(request)
 
-    return render_template("information.html",
-                           session=session,
-                           registration_disabled=app.config['REGISTRATION_DISABLED'])
+    return render_template(
+        "information.html",
+        session=session,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
+    )
+
 
 @app.route("/secret/export")
 def export_teams():
@@ -1302,8 +1481,8 @@ def export_teams():
     except KeyError:
         abort(404)
 
-    if password != app.config['EXPORT_PASSWORD']:
-        if password == app.config['MAILS_PASSWORD']:
+    if password != app.config["EXPORT_PASSWORD"]:
+        if password == app.config["MAILS_PASSWORD"]:
             emails = get_emails()
             return jsonify({"emails": emails})
         else:
@@ -1311,7 +1490,9 @@ def export_teams():
 
     connection = get_db()
     c = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    c.execute("SELECT users.id, users.team_name, users.university, countries.code, countries.name, images.token FROM users JOIN countries ON countries.code = users.country LEFT JOIN images on images.user_id = users.id WHERE users.mail_verified and users.active ORDER BY id ASC;")
+    c.execute(
+        "SELECT users.id, users.team_name, users.university, countries.code, countries.name, images.token FROM users JOIN countries ON countries.code = users.country LEFT JOIN images on images.user_id = users.id WHERE users.mail_verified and users.active ORDER BY id ASC;"
+    )
     users = c.fetchall()
 
     # transform keys to gameengine style
@@ -1328,7 +1509,7 @@ def export_teams():
         user["Country"] = {
             "Code": country_code,
             "Name": user.pop("name"),
-            "FlagUrl": request.url_root.replace("http", "https") + "flags/" + country_code + ".svg"
+            "FlagUrl": request.url_root.replace("http", "https") + "flags/" + country_code + ".svg",
         }
         logo_token = user.pop("token")
         if logo_token:
@@ -1336,8 +1517,8 @@ def export_teams():
         else:
             user["LogoUrl"] = None
 
-
     return jsonify({"Teams": users})
+
 
 @app.route("/logo")
 def page_img():
@@ -1372,23 +1553,23 @@ def download():
         # bad request
         abort(400)
 
-    if file == 'vpn_config':
-        filename = 'team' + str(session[2]) + '.conf'
-    elif file == 'key':
-        filename = 'vm.key'
+    if file == "vpn_config":
+        filename = "team" + str(session[2]) + ".conf"
+    elif file == "key":
+        filename = "vm.key"
     else:
         abort(404)
 
-    return send_from_directory(app.root_path + '/downloads/', filename, as_attachment=True)
+    return send_from_directory(app.root_path + "/downloads/", filename, as_attachment=True)
 
 
-@app.route("/teamvm.html", methods=['GET','POST'])
+@app.route("/teamvm.html", methods=["GET", "POST"])
 def page_teamvm():
     session = get_session(request)
     response = []
     status = ""
 
-    #redirect if user is not logged in
+    # redirect if user is not logged in
     if not session:
         return redirect("login.html")
 
@@ -1397,23 +1578,23 @@ def page_teamvm():
     if False:
         try:
             teamID = str(session[2])
-            client = Client(token=app.config['HCLOUD_TOKEN'])
-            client_server = client.servers.get_by_name(f'team{teamID}')
+            client = Client(token=app.config["HCLOUD_TOKEN"])
+            client_server = client.servers.get_by_name(f"team{teamID}")
 
             if client_server is None:
                 status = "Server not Created"
             else:
-                status = f'VM status : {client_server.status}'
+                status = f"VM status : {client_server.status}"
         except Exception as e:
             print(e)
             status = "Server not Created"
 
     if not app.config["RESTART_VM_ENABLED"] and str(session[2]) != "1":
         response = ["Vulnboxes can only be created after the CTF has started!"]
-    elif request.method == 'POST':
+    elif request.method == "POST":
         teamID = str(session[2])
-        client = Client(token=app.config['HCLOUD_TOKEN'])
-        client_server = client.servers.get_by_name(f'team{teamID}')
+        client = Client(token=app.config["HCLOUD_TOKEN"])
+        client_server = client.servers.get_by_name(f"team{teamID}")
 
         with open(f"/secret/passwords/team{teamID}.txt", "r") as f:
             root_password = f.read().strip()
@@ -1448,16 +1629,18 @@ cd "/services/$service" && docker-compose up -d &
 done
 """
 
-        if request.form['submit_button'] == 'create' and client_server is None:
+        if request.form["submit_button"] == "create" and client_server is None:
             try:
                 # Fetch all vulnbox images and take the most recent
-                client_images = client.images.get_all(label_selector="type=bambivulnbox", sort="created:desc")
+                client_images = client.images.get_all(
+                    label_selector="type=bambivulnbox", sort="created:desc"
+                )
                 image = client_images[0]
                 ssh_keys = client.ssh_keys.get_all()
 
                 # Create the server and display root password for the team
                 client_server = client.servers.create(
-                    name=f'team{teamID}',
+                    name=f"team{teamID}",
                     ssh_keys=ssh_keys,
                     server_type=ServerType(name=app.config["HCLOUD_VMTYPE"]),
                     image=image,
@@ -1466,42 +1649,48 @@ done
                 )
                 # root_password = client_server.root_password
                 vm_ip = client_server.server.public_net.ipv4.ip
-                response.append(f'Sucess ! Your password is {root_password} and your ip is {str(vm_ip)}. Remember it and have fun !')
-                send_one("Your Vulnbox has been created successfully!\n\nYour ip: {str(vm_ip)}\nYour pw: {root_password}\n\nConnect via\n\tssh root@{str(vm_ip)}\n\nNote that it may take 2-3 minutes until you can login.\n\nENOWARS4 is proudly sponsored by Hetzner Cloud ( https://www.hetzner.com/cloud )", "ENOWARS4 Vulnbox Credentials", session[2])
+                response.append(
+                    f"Sucess ! Your password is {root_password} and your ip is {str(vm_ip)}. Remember it and have fun !"
+                )
+                send_one(
+                    "Your Vulnbox has been created successfully!\n\nYour ip: {str(vm_ip)}\nYour pw: {root_password}\n\nConnect via\n\tssh root@{str(vm_ip)}\n\nNote that it may take 2-3 minutes until you can login.\n\nENOWARS4 is proudly sponsored by Hetzner Cloud ( https://www.hetzner.com/cloud )",
+                    "ENOWARS4 Vulnbox Credentials",
+                    session[2],
+                )
             except Exception as e:
                 print(e)
                 raise e
 
-        elif request.form['submit_button'] == 'restart' and client_server is not None:
-            if client_server.status == 'running':
+        elif request.form["submit_button"] == "restart" and client_server is not None:
+            if client_server.status == "running":
                 try:
-                    client_server = client.servers.get_by_name(f'team{teamID}')
+                    client_server = client.servers.get_by_name(f"team{teamID}")
                     client_server.reboot()
-                    response = ['Successful restart']
+                    response = ["Successful restart"]
                 except:
                     response = ["Failed restart"]
-            else :
-                response = ['Your VM is not running']
-        elif request.form['submit_button'] == 'power_off' and client_server is not None:
-            if client_server.status == 'running':
+            else:
+                response = ["Your VM is not running"]
+        elif request.form["submit_button"] == "power_off" and client_server is not None:
+            if client_server.status == "running":
                 try:
-                    client_server = client.servers.get_by_name(f'team{teamID}')
+                    client_server = client.servers.get_by_name(f"team{teamID}")
                     client_server.power_off()
-                    response = ['Successful shutdown']
+                    response = ["Successful shutdown"]
                 except:
                     response = ["Failed shutdown"]
             else:
-                response = ['Your VM is not running']
-        elif request.form['submit_button'] == 'power_on' and client_server is not None:
-            if client_server.status == 'off':
+                response = ["Your VM is not running"]
+        elif request.form["submit_button"] == "power_on" and client_server is not None:
+            if client_server.status == "off":
                 try:
-                    client_server = client.servers.get_by_name(f'team{teamID}')
+                    client_server = client.servers.get_by_name(f"team{teamID}")
                     client_server.power_on()
-                    response = ['Successful start']
+                    response = ["Successful start"]
                 except:
                     response = ["Failed start"]
             else:
-                response = ['Your VM is already running']
+                response = ["Your VM is already running"]
         elif client_server is None:
             response = ["VM not created"]
         elif client_server is not None:
@@ -1509,11 +1698,9 @@ done
         else:
             abort(400)
 
-    return render_template('teamvm.html',
-        session=session,
-        verified=True,
-        active=True,
-        status=status,
-        response=response)
+    return render_template(
+        "teamvm.html", session=session, verified=True, active=True, status=status, response=response
+    )
+
 
 init_db()
