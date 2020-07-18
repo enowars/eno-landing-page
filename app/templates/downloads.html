@@ -23,7 +23,7 @@ teamrouter.ova</a>, <a href="https://drive.google.com/file/d/1GN5QCESs35UVKTZd_A
                     {% endif %}
                     {% if download_options['DOWNLOAD_KEY_ENABLED'] %}
                         <li><i class="fa fa-download"></i>
-                            <a href="{{ url_for('download', file='sshkey') }}">team{{ session[2] }}.key</a>
+                            <a href="{{ url_for('download', file='key') }}">team{{ session[2] }}.key</a>
                         </li>
                     {% endif %}
                     {% for file in files %}
@@ -40,7 +40,17 @@ teamrouter.ova</a>, <a href="https://drive.google.com/file/d/1GN5QCESs35UVKTZd_A
                 </div>
             {% endif %}
 	    <h3>Note that we will release the public repo with all services for self-hosting teams after the CTF has started.</h3>
-	    <h3>There will also be a script released which grabs additional data for one service (again only self-hosting teams need to worry about that).</h3>
+	    <h3>There will also be a key released which can be used to grab additional data for one service (again only self-hosting teams need to worry about this).</h3>
+	    <h3>key + ip + service-name are released when the ctf starts</h3>
+	    <div class="code-block">
+	        <code>curl -o &lt;key&gt;.zip http://secret.ip.released.later/&lt;key&gt;.zip
+		unzip &lt;key&gt;.zip -d /tmp
+		rm -f &lt;key&gt;.zip
+		mkdir /services/foo-service/app/keys
+		cp /tmp/&lt;key&gt;/* /services/foo-service/app/keys
+		</code>
+	    </div>
+
         </div>
     </div>
 </div>

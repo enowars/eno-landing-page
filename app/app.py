@@ -598,7 +598,7 @@ def init_db():
             connection = psycopg2.connect(**db_conf)
             cursor = connection.cursor()
             break
-        except (Exception, psycopg2.Error) as e:
+        except Exception as e:
             print(f"Error connection to db: {e}")
         tries += 1
         sleep(3)
@@ -984,6 +984,8 @@ def page_verify_mail():
     session = get_session(request)
     countries = get_countries(request)
 
+    redirect("index.html")
+    return
     # verified sessions are good
     if session and is_mail_verified(session[2]):
         print("verified")
@@ -1360,7 +1362,7 @@ def page_downloads():
             "DOWNLOAD_CONFIG_ENABLED": app.config["DOWNLOAD_CONFIG_ENABLED"]
             and isfile(app.root_path + "/downloads/configs/team" + str(session[2]) + ".conf"),
             "DOWNLOAD_KEY_ENABLED": app.config["DOWNLOAD_KEY_ENABLED"]
-            and isfile(app.root_path + f"/downloads/{str(session[2])}.key"),
+            and isfile(app.root_path + f"/downloads/keys/team{str(session[2])}.txt"),
         },
         files=files,
     )
@@ -1499,12 +1501,14 @@ def export_teams():
         user["Id"] = user.pop("id")
         user["Name"] = user.pop("team_name")
         user["TeamSubnet"] = "::ffff:10.0.0." + str(user["Id"])
+        user["Address"] = "10.0.0." + str(user["Id"])
+        country_code = user.pop("code")
+        user["FlagUrl"] = request.url_root.replace("http", "https") + "flags/" + country_code + ".svg"
         university = user.pop("university")
         if university:
             user["University"] = university
         else:
             user["University"] = None
-        country_code = user.pop("code")
         user["Country"] = {
             "Code": country_code,
             "Name": user.pop("name"),
@@ -1554,12 +1558,14 @@ def download():
 
     if file == "vpn_config":
         filename = "team" + str(session[2]) + ".conf"
+        return send_from_directory(app.root_path + "/downloads/configs/", filename, as_attachment=True)
     elif file == "key":
-        filename = "vm.key"
+        filename = "team" + str(session[2]) + ".txt"
+        return send_from_directory(app.root_path + "/downloads/keys/", filename, as_attachment=True)
     else:
         abort(404)
+    return redirect("downloads.html")
 
-    return send_from_directory(app.root_path + "/downloads/configs/", filename, as_attachment=True)
 
 
 @app.route("/teamvm.html", methods=["GET", "POST"])
