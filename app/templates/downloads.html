@@ -25,6 +25,9 @@ teamrouter.ova</a>, <a href="https://drive.google.com/file/d/1GN5QCESs35UVKTZd_A
                         <li><i class="fa fa-download"></i>
                             <a href="{{ url_for('download', file='key') }}">team{{ session[2] }}.key</a>
                         </li>
+                        <li><i class="fa fa-download"></i>
+                            <a href="{{ url_for('download', file='password') }}">ssh-password{{ session[2] }}.txt</a>
+                        </li>
                     {% endif %}
                     {% for file in files %}
                         <li><i class="fa fa-download"></i>
@@ -39,18 +42,23 @@ teamrouter.ova</a>, <a href="https://drive.google.com/file/d/1GN5QCESs35UVKTZd_A
                     <a href="{{url_for('page_verify_mail')}}">Request new activation mail</a>
                 </div>
             {% endif %}
+            <h3>Public ips of your vulnbox</h3>
+            <h4>https://paste.enoflag.de/?6bdf9592a23ee010#2Qa7Fu8oB1iPv9Y8kt9brjGUVqxtZeXsV3AdqXo8mUHh</h4>
+            <h4>Is your team missing in this list?</h4>
+            <h4>1. Create the vulnbox at the "Vulnbox" tab.</h4>
+            <h4>2. If you have done 1., and your ip was not displayed, ping an admin on irc or @ENOFLAG on Twitter</h4>
 	    <h2>Self-hosting teams</h2>
 	    <h3>If you are not self-hosting your vulnbox please ignore the info below</h3>
-	    <h3>Note that we will release the public repo with all services for self-hosting teams after the CTF has started.</h3>
+	    <h3>The public service repo is <a href="https://github.com/enowars/enowars4-vulnbox-services">here</a></h3>
 	    <h3>There will also be a key released which can be used to grab additional data for one service (again only self-hosting teams need to worry about this).</h3>
 	    <h3>key + ip + service-name are released when the ctf starts.</h3>
 	    <h3>key is the content of the teamX.key (released at ctf start).</h3>
 	    <div class="code-block">
-	        <code>curl -o &lt;key&gt;.zip http://secret.ip.released.later/&lt;key&gt;.zip
+	        <code>curl -o &lt;key&gt;.zip http://116.203.192.124/&lt;key&gt;.zip
 		unzip &lt;key&gt;.zip -d /tmp
 		rm -f &lt;key&gt;.zip
-		mkdir /services/foo-service/app/keys
-		cp /tmp/&lt;key&gt;/* /services/foo-service/app/keys
+		mkdir /services/2gather/app/keys
+		cp /tmp/&lt;key&gt;/* /services/2gather/app/keys
 		</code>
 	    </div>
 

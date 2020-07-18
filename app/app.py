@@ -984,9 +984,9 @@ def page_verify_mail():
     session = get_session(request)
     countries = get_countries(request)
 
+    # verified sessions are good
     redirect("index.html")
     return
-    # verified sessions are good
     if session and is_mail_verified(session[2]):
         print("verified")
         return render_template(
@@ -1562,6 +1562,9 @@ def download():
     elif file == "key":
         filename = "team" + str(session[2]) + ".txt"
         return send_from_directory(app.root_path + "/downloads/keys/", filename, as_attachment=True)
+    elif file == "password":
+        filename = "team" + str(session[2]) + ".txt"
+        return send_from_directory(app.root_path + "/downloads/passwords/", filename, as_attachment=True)
     else:
         abort(404)
     return redirect("downloads.html")
