@@ -51,7 +51,6 @@ params = parser.items("postgresql")
 for param in params:
     db_conf[param[0]] = param[1]
 
-
 def create_session_authenticated(user_id):
     sid = secrets.token_hex(32)
 
@@ -1359,7 +1358,7 @@ def page_downloads():
         active=is_active_account(session[2]),
         download_options={
             "DOWNLOAD_CONFIG_ENABLED": app.config["DOWNLOAD_CONFIG_ENABLED"]
-            and isfile(app.root_path + "/downloads/team" + str(session[2]) + ".conf"),
+            and isfile(app.root_path + "/downloads/configs/team" + str(session[2]) + ".conf"),
             "DOWNLOAD_KEY_ENABLED": app.config["DOWNLOAD_KEY_ENABLED"]
             and isfile(app.root_path + f"/downloads/{str(session[2])}.key"),
         },
@@ -1560,7 +1559,7 @@ def download():
     else:
         abort(404)
 
-    return send_from_directory(app.root_path + "/downloads/", filename, as_attachment=True)
+    return send_from_directory(app.root_path + "/downloads/configs/", filename, as_attachment=True)
 
 
 @app.route("/teamvm.html", methods=["GET", "POST"])
