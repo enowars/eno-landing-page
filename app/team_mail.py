@@ -1,9 +1,11 @@
 import random
-from flask_mail import Mail, Message
-from flask import Flask
-from configparser import ConfigParser
-import psycopg2, psycopg2.extras
 import time
+from configparser import ConfigParser
+
+import psycopg2
+import psycopg2.extras
+from flask import Flask
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 app.config.from_pyfile("flask.cfg", silent=True)
@@ -70,7 +72,9 @@ def send_all(body, subject):
     for email in emails:
         # recipients needs to be type list
         email = [email]
-        msg = Message(body=body, subject=subject, sender="mail@enowars.com", recipients=email)
+        msg = Message(
+            body=body, subject=subject, sender="mail@enowars.com", recipients=email
+        )
 
         try:
             mail.send(msg)
@@ -79,7 +83,9 @@ def send_all(body, subject):
             print(ex)
         finally:
             x += 1
-            print("Team: " + email[0] + " done. " + str(x) + " out of " + str(len(emails)))
+            print(
+                "Team: " + email[0] + " done. " + str(x) + " out of " + str(len(emails))
+            )
             print("Delay because otherwise mail provider thinks I am spamming.")
             time.sleep(5)
 
@@ -87,7 +93,6 @@ def send_all(body, subject):
 def get_emails():
     with app.app_context():
         connection = psycopg2.connect(**db_conf)
-        cursor = connection.cursor()
 
         c = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
         c.execute("SELECT users.username FROM users WHERE mail_verified = 't';")
@@ -104,7 +109,9 @@ def send_one(body, subject, user_id):
     with app.app_context():
         time.sleep(random.randint(1, 20))  # This one hurts ...
         email = get_email(user_id)
-        msg = Message(body=body, subject=subject, sender="mail@enowars.com", recipients=email)
+        msg = Message(
+            body=body, subject=subject, sender="mail@enowars.com", recipients=email
+        )
 
         try:
             mail.send(msg)
@@ -117,7 +124,6 @@ def send_one(body, subject, user_id):
 def get_email(user_id):
     with app.app_context():
         connection = psycopg2.connect(**db_conf)
-        cursor = connection.cursor()
 
         c = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
         c.execute(

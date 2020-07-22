@@ -1,6 +1,10 @@
+import argparse
+import base64
+import json
 from configparser import ConfigParser
-import psycopg2, psycopg2.extras
-import json, argparse, base64
+
+import psycopg2
+import psycopg2.extras
 
 db_conf = {}
 parser = ConfigParser()
@@ -46,7 +50,9 @@ def get_users(style):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("style", help='select your json style - "gameengine" | "scoreboard"')
+parser.add_argument(
+    "style", help='select your json style - "gameengine" | "scoreboard"'
+)
 args = parser.parse_args()
 print("exporting teams to teams.json ")
 f = open("teams.json", "w")

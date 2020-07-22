@@ -1,7 +1,8 @@
-from PIL import Image, ImageFont, ImageDraw
+import io
 import secrets
 import string
-import io
+
+from PIL import Image, ImageDraw, ImageFont
 
 
 def _draw_lines(draw_context, width, height, amount=100, max_length=80, max_width=4):
@@ -77,7 +78,8 @@ def generate_captcha(
     for char in text:
         draw_context.text(
             (
-                current_width + (secrets.randbelow(horizontal_change) - horizontal_change / 2),
+                current_width
+                + (secrets.randbelow(horizontal_change) - horizontal_change / 2),
                 current_height,
             ),
             char,
@@ -88,7 +90,8 @@ def generate_captcha(
         current_width += fnt.getsize(char)[0] + equal_padding
         current_height = min(
             max(
-                current_height + (secrets.randbelow(vertical_change_max) - vertical_change_max / 2),
+                current_height
+                + (secrets.randbelow(vertical_change_max) - vertical_change_max / 2),
                 10,
             ),
             image_height - 10 - font_height,

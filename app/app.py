@@ -3,42 +3,32 @@ import hashlib
 import io
 import re
 import secrets
-from time import sleep
+from configparser import ConfigParser
 from os import listdir
 from os.path import isfile
+from time import sleep
 
-from configparser import ConfigParser
+import PIL.Image
+import psycopg2
+import psycopg2.extras
 from flask import (
     Flask,
-    request,
-    render_template,
-    redirect,
     abort,
     g,
-    make_response,
-    send_from_directory,
     jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
 )
 from flask_mail import Mail, Message
-import psycopg2, psycopg2.extras
-import PIL.Image
-
-from captcha_gen import generate_captcha
-from team_mail import get_emails, send_one
-
-## Hetzner API
 from hcloud import Client
-from hcloud.images.domain import Image
 from hcloud.locations.domain import Location
 from hcloud.server_types.domain import ServerType
 
-## Google API
-from libcloud.compute.types import Provider
-from libcloud.compute.providers import get_driver
-from libcloud.compute.types import NodeState
-
-## Desec DNS API
-from desec_dns_api.recordsets import create_rrset
+from captcha_gen import generate_captcha
+from team_mail import get_emails, send_one
 
 app = Flask(__name__)
 app.config.from_pyfile("flask.cfg", silent=True)
@@ -50,6 +40,7 @@ parser.read("postgres.cfg")
 params = parser.items("postgresql")
 for param in params:
     db_conf[param[0]] = param[1]
+
 
 def create_session_authenticated(user_id):
     sid = secrets.token_hex(32)
@@ -111,13 +102,15 @@ def create_user(username, password, team_name, country, university):
                 "active": True,
             },
         )
-    except psycopg2.errors.UniqueViolation as ex:  # username, team_name already exists
+    except psycopg2.errors.UniqueViolation:  # username, team_name already exists
         connection.rollback()  # rollback to allow further db usage
         return 0
 
     connection.commit()
 
-    c.execute("SELECT id FROM users WHERE username = %(username)s;", {"username": username})
+    c.execute(
+        "SELECT id FROM users WHERE username = %(username)s;", {"username": username}
+    )
     return c.fetchone()[0]  # fetchone() returns a tuple: (<user_id>, )
 
 
@@ -126,7 +119,9 @@ def update_session_cookie(response):
     session = get_session(request)
 
     if not session is None:
-        response.set_cookie(key="session", value=session[0], max_age=session[1], httponly=True)
+        response.set_cookie(
+            key="session", value=session[0], max_age=session[1], httponly=True
+        )
 
     return response
 
@@ -159,7 +154,9 @@ def get_session(request):
 def auth(user_id, password):
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT salt, hash FROM users WHERE id = %(user_id)s;", {"user_id": user_id})
+    c.execute(
+        "SELECT salt, hash FROM users WHERE id = %(user_id)s;", {"user_id": user_id}
+    )
     r = c.fetchone()
 
     if r is None:
@@ -297,7 +294,9 @@ footer_html = (
 def send_reset_mail_to(username):
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT id FROM users WHERE username = %(username)s;", {"username": username})
+    c.execute(
+        "SELECT id FROM users WHERE username = %(username)s;", {"username": username}
+    )
     r = c.fetchone()
 
     if r is None:
@@ -421,7 +420,9 @@ def remove_reset_password_token(token):
 def login(username, password):
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT id FROM users WHERE username = %(username)s;", {"username": username})
+    c.execute(
+        "SELECT id FROM users WHERE username = %(username)s;", {"username": username}
+    )
     user_id = c.fetchone()
 
     if user_id is None:
@@ -432,7 +433,9 @@ def login(username, password):
     return None
 
 
-def edit_user(user_id, email_provided, team_name_provided, country_provided, university_provided):
+def edit_user(
+    user_id, email_provided, team_name_provided, country_provided, university_provided
+):
     connection = get_db()
     c = connection.cursor()
     try:
@@ -447,7 +450,7 @@ def edit_user(user_id, email_provided, team_name_provided, country_provided, uni
                 "country": country_provided,
             },
         )  # TODO ( ) needed?
-    except psycopg2.errors.UniqueViolation as ex:  # username or team_name already exists
+    except psycopg2.errors.UniqueViolation:  # username or team_name already exists
         connection.rollback()  # rollback to allow further db usage
         return False  # indicate error
 
@@ -458,7 +461,9 @@ def edit_user(user_id, email_provided, team_name_provided, country_provided, uni
 def is_mail_verified(user_id):
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT mail_verified FROM users WHERE id = %(user_id)s;", {"user_id": user_id})
+    c.execute(
+        "SELECT mail_verified FROM users WHERE id = %(user_id)s;", {"user_id": user_id}
+    )
     verified = c.fetchone()
 
     if verified is None:
@@ -483,7 +488,9 @@ def store_img(user_id, img_data, file_type):
     connection = get_db()
     c = connection.cursor()
 
-    c.execute("SELECT token FROM images WHERE user_id = %(user_id)s;", {"user_id": user_id})
+    c.execute(
+        "SELECT token FROM images WHERE user_id = %(user_id)s;", {"user_id": user_id}
+    )
     token = c.fetchone()
 
     if token is None:
@@ -493,7 +500,9 @@ def store_img(user_id, img_data, file_type):
             token = secrets.token_urlsafe(32)
 
             # check if this generated token is unique
-            c.execute("SELECT count(*) FROM images WHERE token = %(token)s;", {"token": token})
+            c.execute(
+                "SELECT count(*) FROM images WHERE token = %(token)s;", {"token": token}
+            )
             used = c.fetchone()[0]
 
             if not used:
@@ -512,7 +521,9 @@ def store_img(user_id, img_data, file_type):
 def get_img_token(user_id):
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT token FROM images WHERE user_id = %(user_id)s;", {"user_id": user_id})
+    c.execute(
+        "SELECT token FROM images WHERE user_id = %(user_id)s;", {"user_id": user_id}
+    )
     result = c.fetchone()
 
     if result is None:
@@ -563,7 +574,9 @@ def get_img(token):
 
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT data, type FROM images WHERE token = %(token)s;", {"token": token})
+    c.execute(
+        "SELECT data, type FROM images WHERE token = %(token)s;", {"token": token}
+    )
     result = c.fetchone()
 
     return result
@@ -695,14 +708,20 @@ def is_valid_captcha(captcha_provided, token_provided):
 
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT text FROM tokens_captcha WHERE token = %(token)s;", {"token": token_provided})
+    c.execute(
+        "SELECT text FROM tokens_captcha WHERE token = %(token)s;",
+        {"token": token_provided},
+    )
     text = c.fetchone()
 
     if text is None:
         return False
 
     if captcha_provided == text[0]:
-        c.execute("DELETE FROM tokens_captcha WHERE token = %(token)s;", {"token": token_provided})
+        c.execute(
+            "DELETE FROM tokens_captcha WHERE token = %(token)s;",
+            {"token": token_provided},
+        )
         connection.commit()
 
         return True
@@ -715,7 +734,9 @@ def page_index():
     session = get_session(request)
 
     return render_template(
-        "index.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+        "index.html",
+        session=session,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
     )
 
 
@@ -724,7 +745,9 @@ def page_legal():
     session = get_session(request)
 
     return render_template(
-        "legal.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+        "legal.html",
+        session=session,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
     )
 
 
@@ -773,7 +796,9 @@ def page_login():
 
         # redirect on successful login
         response = redirect("edit.html")
-        response.set_cookie(key="session", value=result[0], max_age=result[1], httponly=True)
+        response.set_cookie(
+            key="session", value=result[0], max_age=result[1], httponly=True
+        )
         return response
     else:
         return render_template(
@@ -795,7 +820,9 @@ def page_logout():
     response = redirect("index.html")
 
     # as the session is None now the cookie must be set (expired and to an empty string) manually
-    response.set_cookie(key="session", value=result[0], max_age=result[1], httponly=True)
+    response.set_cookie(
+        key="session", value=result[0], max_age=result[1], httponly=True
+    )
     return response
 
 
@@ -1167,7 +1194,9 @@ def page_reset_password():
         # GET without a token results in a page where users can enter their mail adress to request a password reset mail
         # GET with a token results in a page where users can enter the new password
         return render_template(
-            "reset.html", token=token, registration_disabled=app.config["REGISTRATION_DISABLED"]
+            "reset.html",
+            token=token,
+            registration_disabled=app.config["REGISTRATION_DISABLED"],
         )
 
 
@@ -1300,7 +1329,11 @@ def page_edit():
 
         old_team_data = get_team_data(session[2])
         success = edit_user(
-            session[2], email_provided, team_name_provided, country_provided, university_provided
+            session[2],
+            email_provided,
+            team_name_provided,
+            country_provided,
+            university_provided,
         )
 
         if not success:
@@ -1360,7 +1393,9 @@ def page_downloads():
         active=is_active_account(session[2]),
         download_options={
             "DOWNLOAD_CONFIG_ENABLED": app.config["DOWNLOAD_CONFIG_ENABLED"]
-            and isfile(app.root_path + "/downloads/configs/team" + str(session[2]) + ".conf"),
+            and isfile(
+                app.root_path + "/downloads/configs/team" + str(session[2]) + ".conf"
+            ),
             "DOWNLOAD_KEY_ENABLED": app.config["DOWNLOAD_KEY_ENABLED"]
             and isfile(app.root_path + f"/downloads/keys/team{str(session[2])}.txt"),
         },
@@ -1380,7 +1415,9 @@ def page_img_upload():
     if not is_mail_verified(session[2]) or not is_active_account(session[2]):
         abort(403)
 
-    if request.content_length > (500 * 1024) or request.content_length == 0:  # max. 500 kilobyte
+    if (
+        request.content_length > (500 * 1024) or request.content_length == 0
+    ):  # max. 500 kilobyte
         abort(400)
 
     # validate content type of the uploading image
@@ -1393,8 +1430,10 @@ def page_img_upload():
 
     try:
         im = PIL.Image.open(io.BytesIO(request.data))
-    except IOError as ex:
-        return make_response("Image format could not be verified. Please try an other image.", 400)
+    except IOError:
+        return make_response(
+            "Image format could not be verified. Please try an other image.", 400
+        )
 
     # validate actual image format matches content type
     if request.content_type == "image/png":
@@ -1436,7 +1475,9 @@ def page_teams():
 def page_network():
     session = get_session(request)
     return render_template(
-        "network.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+        "network.html",
+        session=session,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
     )
 
 
@@ -1444,7 +1485,9 @@ def page_network():
 def page_rules():
     session = get_session(request)
     return render_template(
-        "rules.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+        "rules.html",
+        session=session,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
     )
 
 
@@ -1452,7 +1495,9 @@ def page_rules():
 def page_vms():
     session = get_session(request)
     return render_template(
-        "vms.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+        "vms.html",
+        session=session,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
     )
 
 
@@ -1460,7 +1505,9 @@ def page_vms():
 def page_faq():
     session = get_session(request)
     return render_template(
-        "faq.html", session=session, registration_disabled=app.config["REGISTRATION_DISABLED"]
+        "faq.html",
+        session=session,
+        registration_disabled=app.config["REGISTRATION_DISABLED"],
     )
 
 
@@ -1503,7 +1550,9 @@ def export_teams():
         user["TeamSubnet"] = "::ffff:10.0.0." + str(user["Id"])
         user["Address"] = "10.0.0." + str(user["Id"])
         country_code = user.pop("code")
-        user["FlagUrl"] = request.url_root.replace("http", "https") + "flags/" + country_code + ".svg"
+        user["FlagUrl"] = (
+            request.url_root.replace("http", "https") + "flags/" + country_code + ".svg"
+        )
         university = user.pop("university")
         if university:
             user["University"] = university
@@ -1512,11 +1561,16 @@ def export_teams():
         user["Country"] = {
             "Code": country_code,
             "Name": user.pop("name"),
-            "FlagUrl": request.url_root.replace("http", "https") + "flags/" + country_code + ".svg",
+            "FlagUrl": request.url_root.replace("http", "https")
+            + "flags/"
+            + country_code
+            + ".svg",
         }
         logo_token = user.pop("token")
         if logo_token:
-            user["LogoUrl"] = request.url_root.replace("http", "https") + "logo?img=" + logo_token
+            user["LogoUrl"] = (
+                request.url_root.replace("http", "https") + "logo?img=" + logo_token
+            )
         else:
             user["LogoUrl"] = None
 
@@ -1558,17 +1612,22 @@ def download():
 
     if file == "vpn_config":
         filename = "team" + str(session[2]) + ".conf"
-        return send_from_directory(app.root_path + "/downloads/configs/", filename, as_attachment=True)
+        return send_from_directory(
+            app.root_path + "/downloads/configs/", filename, as_attachment=True
+        )
     elif file == "key":
         filename = "team" + str(session[2]) + ".txt"
-        return send_from_directory(app.root_path + "/downloads/keys/", filename, as_attachment=True)
+        return send_from_directory(
+            app.root_path + "/downloads/keys/", filename, as_attachment=True
+        )
     elif file == "password":
         filename = "team" + str(session[2]) + ".txt"
-        return send_from_directory(app.root_path + "/downloads/passwords/", filename, as_attachment=True)
+        return send_from_directory(
+            app.root_path + "/downloads/passwords/", filename, as_attachment=True
+        )
     else:
         abort(404)
     return redirect("downloads.html")
-
 
 
 @app.route("/teamvm.html", methods=["GET", "POST"])
@@ -1708,7 +1767,12 @@ done
             abort(400)
 
     return render_template(
-        "teamvm.html", session=session, verified=True, active=True, status=status, response=response
+        "teamvm.html",
+        session=session,
+        verified=True,
+        active=True,
+        status=status,
+        response=response,
     )
 
 
