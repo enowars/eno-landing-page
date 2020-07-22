@@ -1,0 +1,6 @@
+pillow
+flask
+flask_mail
+hcloud
+psycopg2
+desec_dns_api
