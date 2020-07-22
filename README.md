@@ -1,4 +1,4 @@
-# EnoTeams
+# EnoTeams ![](https://tokei.rs/b1/github/enowars/eno-landing-page)
 CTF team registration page based on Flask, Gunicorn and Nginx.
 
 
