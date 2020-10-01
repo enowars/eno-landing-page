@@ -3,6 +3,7 @@ import hashlib
 import io
 import re
 import secrets
+
 from time import sleep
 from os import listdir
 from os.path import isfile
@@ -19,6 +20,7 @@ from flask import (
     send_from_directory,
     jsonify,
 )
+
 from flask_mail import Mail, Message
 import psycopg2, psycopg2.extras
 import PIL.Image
@@ -89,9 +91,11 @@ def remove_entries_expired():
 def create_user(username, password, team_name, country, university):
     salt = secrets.token_hex(32)
 
-    h = hashlib.sha512()
+    h = hashlib.sha3_512()
     h.update(str.encode(salt))
+    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(password))
+    h.update(str.encode(h.hexdigest()))
     user_hash = h.hexdigest()
 
     connection = get_db()
@@ -168,9 +172,11 @@ def auth(user_id, password):
     salt = r[0]
     hash_db = r[1]
 
-    h = hashlib.sha512()
+    h = hashlib.sha3_512()
     h.update(str.encode(salt))
+    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(password))
+    h.update(str.encode(h.hexdigest()))
     hash_user = h.hexdigest()
 
     # reduce the risk of timing attacks by using special compare function
@@ -396,9 +402,11 @@ def verify_reset_password_token(token):
 def change_password_and_logout(user_id, password_new):
     salt = secrets.token_hex(32)
 
-    h = hashlib.sha512()
+    h = hashlib.sha3_512()
     h.update(str.encode(salt))
+    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(password_new))
+    h.update(str.encode(h.hexdigest()))
     hash_new = h.hexdigest()
 
     connection = get_db()
