@@ -93,8 +93,8 @@ def create_user(username, password, team_name, country, university):
 
     h = hashlib.sha3_512()
     h.update(str.encode(salt))
-    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(password))
+    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(h.hexdigest()))
     user_hash = h.hexdigest()
 
@@ -174,8 +174,8 @@ def auth(user_id, password):
 
     h = hashlib.sha3_512()
     h.update(str.encode(salt))
-    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(password))
+    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(h.hexdigest()))
     hash_user = h.hexdigest()
 
@@ -404,8 +404,8 @@ def change_password_and_logout(user_id, password_new):
 
     h = hashlib.sha3_512()
     h.update(str.encode(salt))
-    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(password_new))
+    h.update(str.encode(h.hexdigest()))
     h.update(str.encode(h.hexdigest()))
     hash_new = h.hexdigest()
 
