@@ -1,8 +1,9 @@
 import base64
-import hashlib
+import argon2
 import io
 import re
 import secrets
+
 from time import sleep
 from os import listdir
 from os.path import isfile
@@ -19,6 +20,7 @@ from flask import (
     send_from_directory,
     jsonify,
 )
+
 from flask_mail import Mail, Message
 import psycopg2, psycopg2.extras
 import PIL.Image
@@ -50,6 +52,9 @@ parser.read("postgres.cfg")
 params = parser.items("postgresql")
 for param in params:
     db_conf[param[0]] = param[1]
+
+# Set up the password hasher
+ph = argon2.PasswordHasher(hash_len=32, salt_len=32)
 
 def create_session_authenticated(user_id):
     sid = secrets.token_hex(32)
@@ -87,23 +92,15 @@ def remove_entries_expired():
 
 
 def create_user(username, password, team_name, country, university):
-    salt = secrets.token_hex(32)
-
-    h = hashlib.sha512()
-    h.update(str.encode(salt))
-    h.update(str.encode(password))
-    user_hash = h.hexdigest()
-
     connection = get_db()
     c = connection.cursor()
     try:
         c.execute(
-            "INSERT INTO users VALUES (default, %(username)s, %(salt)s, %(hash)s, %(team_name)s, %(country)s, \
+            "INSERT INTO users VALUES (default, %(username)s, %(hash)s, %(team_name)s, %(country)s, \
             %(university)s, %(mail_verified)s, %(active)s);",
             {
                 "username": username,
-                "salt": salt,
-                "hash": user_hash,
+                "hash": ph.hash(password),
                 "team_name": team_name,
                 "country": country,
                 "university": university,
@@ -159,23 +156,30 @@ def get_session(request):
 def auth(user_id, password):
     connection = get_db()
     c = connection.cursor()
-    c.execute("SELECT salt, hash FROM users WHERE id = %(user_id)s;", {"user_id": user_id})
+    c.execute("SELECT hash FROM users WHERE id = %(user_id)s;", {"user_id": user_id})
     r = c.fetchone()
 
     if r is None:
         return False  # unknown username # TODO timing attack leaks username
 
-    salt = r[0]
-    hash_db = r[1]
-
-    h = hashlib.sha512()
-    h.update(str.encode(salt))
-    h.update(str.encode(password))
-    hash_user = h.hexdigest()
+    hash_db = r[0]
 
     # reduce the risk of timing attacks by using special compare function
     # returns False on wrong username / password
-    return secrets.compare_digest(hash_db, hash_user)
+    try:
+        ph.verify(hash_db, password)
+
+        # Now that we have the cleartext password, check the hash's parameters
+        # and if outdated, rehash the user's password in the database.
+        if ph.check_needs_rehash(hash_db):
+            c.execute(
+                "UPDATE users SET hash = %(hash)s WHERE id = %(user_id)s;",
+                {"hash": ph.hash(password), "user_id": user_id},
+            )
+
+        return True
+    except argon2.exceptions.VerifyMismatchError as e:
+        return False
 
 
 def generate_verify_mail_token(user_id):
@@ -394,18 +398,11 @@ def verify_reset_password_token(token):
 
 
 def change_password_and_logout(user_id, password_new):
-    salt = secrets.token_hex(32)
-
-    h = hashlib.sha512()
-    h.update(str.encode(salt))
-    h.update(str.encode(password_new))
-    hash_new = h.hexdigest()
-
     connection = get_db()
     c = connection.cursor()
     c.execute(
-        "UPDATE users SET salt = %(salt)s, hash = %(hash)s WHERE id = %(user_id)s;",
-        {"salt": salt, "hash": hash_new, "user_id": user_id},
+        "UPDATE users SET hash = %(hash)s WHERE id = %(user_id)s;",
+        {"hash": ph.hash(password_new), "user_id": user_id},
     )
     c.execute("DELETE FROM sessions WHERE user_id = %(user_id)s;", {"user_id": user_id})
     connection.commit()
@@ -609,7 +606,7 @@ def init_db():
     try:
         c = connection.cursor()
         c.execute(
-            "CREATE TABLE IF NOT EXISTS users (id SERIAL UNIQUE, username TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, hash TEXT NOT NULL, \
+            "CREATE TABLE IF NOT EXISTS users (id SERIAL UNIQUE, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, \
                         team_name TEXT NOT NULL UNIQUE, country TEXT, university TEXT, \
                         mail_verified BOOLEAN NOT NULL, active BOOLEAN NOT NULL, PRIMARY KEY(username));"
         )

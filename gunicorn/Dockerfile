@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y libpq-dev
 
 RUN pip install --upgrade pip
 RUN apt-get install -y build-essential
-RUN pip install requests==2.23.0 flask Flask-Mail psycopg2 Pillow apache-libcloud cryptography hcloud desec-dns-api gunicorn[gevent]
+RUN pip install argon2-cffi requests==2.23.0 flask Flask-Mail psycopg2 Pillow apache-libcloud cryptography hcloud desec-dns-api gunicorn[gevent]
 
 WORKDIR /app
 EXPOSE 8000

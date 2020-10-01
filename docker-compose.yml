@@ -23,6 +23,12 @@ services:
     restart: always
     depends_on:
       - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 200M
   certbot:
     image: certbot/certbot
     volumes:
