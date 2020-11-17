@@ -7,12 +7,14 @@ from configparser import ConfigParser
 from os import listdir
 from os.path import isfile
 from time import sleep
+from typing import List, Optional, Tuple, Union
 
 import PIL.Image
 import psycopg2
 import psycopg2.extras
 from flask import (
     Flask,
+    Request,
     abort,
     g,
     jsonify,
@@ -26,6 +28,7 @@ from flask_mail import Mail, Message
 from hcloud import Client
 from hcloud.locations.domain import Location
 from hcloud.server_types.domain import ServerType
+from werkzeug.wrappers import Response
 
 from captcha_gen import generate_captcha
 from team_mail import get_emails, send_one
@@ -42,7 +45,7 @@ for param in params:
     db_conf[param[0]] = param[1]
 
 
-def create_session_authenticated(user_id):
+def create_session_authenticated(user_id: str) -> Tuple[str, int]:
     sid = secrets.token_hex(32)
 
     connection = get_db()
@@ -57,7 +60,7 @@ def create_session_authenticated(user_id):
     return sid, 3600  # 1 hour = 3600 seconds
 
 
-def remove_session(session_id):
+def remove_session(session_id: str) -> Tuple[str, int]:
     connection = get_db()
     c = connection.cursor()
     c.execute("DELETE FROM sessions WHERE session_id = %(sid)s;", {"sid": session_id})
@@ -67,7 +70,7 @@ def remove_session(session_id):
 
 
 @app.before_request
-def remove_entries_expired():
+def remove_entries_expired() -> None:
     connection = get_db()
     c = connection.cursor()
     c.execute("DELETE FROM sessions WHERE expires_after < (SELECT NOW());")
@@ -77,7 +80,13 @@ def remove_entries_expired():
     connection.commit()
 
 
-def create_user(username, password, team_name, country, university):
+def create_user(
+    username: str,
+    password: str,
+    team_name: str,
+    country: str,
+    university: Optional[str],
+) -> Optional[int]:
     salt = secrets.token_hex(32)
 
     h = hashlib.sha512()
@@ -104,7 +113,7 @@ def create_user(username, password, team_name, country, university):
         )
     except psycopg2.errors.UniqueViolation:  # username, team_name already exists
         connection.rollback()  # rollback to allow further db usage
-        return 0
+        return None
 
     connection.commit()
 
@@ -115,10 +124,10 @@ def create_user(username, password, team_name, country, university):
 
 
 @app.after_request
-def update_session_cookie(response):
+def update_session_cookie(response: Response) -> Response:
     session = get_session(request)
 
-    if not session is None:
+    if session is not None:
         response.set_cookie(
             key="session", value=session[0], max_age=session[1], httponly=True
         )
@@ -126,7 +135,7 @@ def update_session_cookie(response):
     return response
 
 
-def get_session(request):
+def get_session(request: Request) -> Optional[Tuple[str, int, int]]:
     session_cookie = request.cookies.get("session")
     if session_cookie is None:
         return None
@@ -151,7 +160,7 @@ def get_session(request):
     return c.fetchone()
 
 
-def auth(user_id, password):
+def auth(user_id: int, password: str) -> bool:
     connection = get_db()
     c = connection.cursor()
     c.execute(
@@ -175,7 +184,7 @@ def auth(user_id, password):
     return secrets.compare_digest(hash_db, hash_user)
 
 
-def generate_verify_mail_token(user_id):
+def generate_verify_mail_token(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
 
     connection = get_db()
@@ -202,7 +211,7 @@ def generate_verify_mail_token(user_id):
     return token
 
 
-def generate_reset_password_token(user_id):
+def generate_reset_password_token(user_id: str) -> str:
     token = secrets.token_urlsafe(32)
 
     connection = get_db()
@@ -229,7 +238,7 @@ def generate_reset_password_token(user_id):
     return token
 
 
-def verify_mail(token):
+def verify_mail(token: str) -> bool:
     # get user_id from token
     connection = get_db()
     c = connection.cursor()
@@ -254,7 +263,7 @@ def verify_mail(token):
     return True
 
 
-def invalidate_email(user_id):
+def invalidate_email(user_id: str) -> None:
     connection = get_db()
     c = connection.cursor()
     c.execute(
@@ -264,7 +273,7 @@ def invalidate_email(user_id):
     connection.commit()
 
 
-def get_team_data(user_id):
+def get_team_data(user_id: int) -> Tuple[str, str, str, str]:
     connection = get_db()
     c = connection.cursor()
     c.execute(
@@ -291,7 +300,7 @@ footer_html = (
 )
 
 
-def send_reset_mail_to(username):
+def send_reset_mail_to(username: str) -> bool:
     connection = get_db()
     c = connection.cursor()
     c.execute(
@@ -338,7 +347,7 @@ def send_reset_mail_to(username):
     return True
 
 
-def send_activate_mail_to(user_id, username):
+def send_activate_mail_to(user_id: int, username: str) -> None:
     token = generate_verify_mail_token(user_id)
 
     activate = (
@@ -375,7 +384,7 @@ def send_activate_mail_to(user_id, username):
     return
 
 
-def verify_reset_password_token(token):
+def verify_reset_password_token(token: str) -> Optional[Tuple[str]]:
     connection = get_db()
     c = connection.cursor()
     # TODO timing attack? # TODO JOIN necessary as relational integrity should be secure anyway?
@@ -392,7 +401,7 @@ def verify_reset_password_token(token):
     return user_id[0]  # fetchone() returns a tuple: (<user_id>, )
 
 
-def change_password_and_logout(user_id, password_new):
+def change_password_and_logout(user_id: str, password_new: str) -> None:
     salt = secrets.token_hex(32)
 
     h = hashlib.sha512()
@@ -410,14 +419,14 @@ def change_password_and_logout(user_id, password_new):
     connection.commit()
 
 
-def remove_reset_password_token(token):
+def remove_reset_password_token(token: str) -> None:
     connection = get_db()
     c = connection.cursor()
     c.execute("DELETE FROM tokens_password WHERE token = %(token)s;", {"token": token})
     connection.commit()
 
 
-def login(username, password):
+def login(username: str, password: str) -> Optional[Tuple[str, int]]:
     connection = get_db()
     c = connection.cursor()
     c.execute(
@@ -434,8 +443,12 @@ def login(username, password):
 
 
 def edit_user(
-    user_id, email_provided, team_name_provided, country_provided, university_provided
-):
+    user_id: str,
+    email_provided: str,
+    team_name_provided: str,
+    country_provided: str,
+    university_provided: str,
+) -> bool:
     connection = get_db()
     c = connection.cursor()
     try:
@@ -458,7 +471,7 @@ def edit_user(
     return True
 
 
-def is_mail_verified(user_id):
+def is_mail_verified(user_id: int) -> bool:
     connection = get_db()
     c = connection.cursor()
     c.execute(
@@ -472,7 +485,7 @@ def is_mail_verified(user_id):
     return verified[0]  # fetchone() returns a tuple: (<verified>, )
 
 
-def is_active_account(user_id):
+def is_active_account(user_id: int) -> bool:
     connection = get_db()
     c = connection.cursor()
     c.execute("SELECT active FROM users WHERE id = %(user_id)s;", {"user_id": user_id})
@@ -484,7 +497,7 @@ def is_active_account(user_id):
     return is_active[0]  # fetchone() returns a tuple: (<is_active>, )
 
 
-def store_img(user_id, img_data, file_type):
+def store_img(user_id: int, img_data: bytes, file_type: str) -> None:
     connection = get_db()
     c = connection.cursor()
 
@@ -518,7 +531,7 @@ def store_img(user_id, img_data, file_type):
     connection.commit()
 
 
-def get_img_token(user_id):
+def get_img_token(user_id: int) -> Optional[str]:
     connection = get_db()
     c = connection.cursor()
     c.execute(
@@ -532,7 +545,7 @@ def get_img_token(user_id):
     return result[0]
 
 
-def get_users():
+def get_users() -> List[Tuple[str, str, str, str, str, str]]:
     connection = get_db()
     c = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     c.execute(
@@ -547,7 +560,9 @@ def get_users():
     return users
 
 
-def get_user_by_id(user_id):
+def get_user_by_id(
+    user_id: int,
+) -> Optional[Tuple[int, str, str, str, str, bool, bool]]:
     connection = get_db()
     c = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     c.execute(
@@ -559,7 +574,7 @@ def get_user_by_id(user_id):
     return user
 
 
-def get_countries(request):
+def get_countries(request: Request) -> List[Tuple[str, str]]:
     connection = get_db()
     c = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
     c.execute("SELECT code, name FROM countries;")
@@ -568,7 +583,7 @@ def get_countries(request):
     return countries
 
 
-def get_img(token):
+def get_img(token: Optional[str]) -> Optional[bytes]:
     if token is None:
         return None
 
@@ -582,7 +597,7 @@ def get_img(token):
     return result
 
 
-def generate_captcha_n_save_token():
+def generate_captcha_n_save_token() -> Tuple[str, str]:
     text, buffer = generate_captcha()
 
     # the html contains utf-8, but the image still contains bytes in base64 encoding
@@ -604,7 +619,7 @@ def generate_captcha_n_save_token():
 
 
 # can't use flask global connect_db here because it is not a flask context yet
-def init_db():
+def init_db() -> None:
     tries = 0
     while tries < 5:
         try:
@@ -658,13 +673,13 @@ def init_db():
             print("PostgreSQL connection is closed")
 
 
-def connect_db():
+def connect_db() -> psycopg2.connection:
     """Connects to the specific database."""
     connection = psycopg2.connect(**db_conf)
     return connection
 
 
-def get_db():
+def get_db() -> psycopg2.connection:
     """Opens a new database connection if there is none yet for the
     current application context.
     """
@@ -680,29 +695,28 @@ def close_db(error):
         g.postgres_db.close()
 
 
-def is_valid_email(email):
-    return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+def is_valid_email(email: str) -> bool:
+    return bool(re.fullmatch(r"[^@]+@[^@]+\.[^@]+", email))
 
 
-def is_valid_password(password):
-    return re.match(r"[A-Za-z0-9@#$%^&+=]{8,265}", password)
+def is_valid_password(password: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z0-9@#$%^&+=]{8,265}", password))
 
 
-def is_valid_country(country_code):
+def is_valid_country(country_code: str) -> bool:
     connection = get_db()
     c = connection.cursor()
     c.execute("SELECT id FROM countries WHERE code = %(code)s;", {"code": country_code})
     return c.fetchone() is not None
 
 
-def is_valid_university(university):
-    if len(university) > 70:
+def is_valid_university(university: Optional[str]) -> bool:
+    if university and len(university) > 70:
         return False
-    else:
-        return True
+    return True
 
 
-def is_valid_captcha(captcha_provided, token_provided):
+def is_valid_captcha(captcha_provided: str, token_provided: str) -> bool:
     if len(token_provided) == 0:
         return False
 
@@ -730,7 +744,7 @@ def is_valid_captcha(captcha_provided, token_provided):
 
 
 @app.route("/index.html")
-def page_index():
+def page_index() -> str:
     session = get_session(request)
 
     return render_template(
@@ -741,7 +755,7 @@ def page_index():
 
 
 @app.route("/legal.html")
-def page_legal():
+def page_legal() -> str:
     session = get_session(request)
 
     return render_template(
@@ -752,7 +766,7 @@ def page_legal():
 
 
 @app.route("/login.html", methods=["GET", "POST"])
-def page_login():
+def page_login() -> Union[str, Response]:
     # redirect if user is already logged in
     if get_session(request):
         return redirect("edit.html")
@@ -807,7 +821,7 @@ def page_login():
 
 
 @app.route("/logout.html", methods=["POST"])
-def page_logout():
+def page_logout() -> Response:
     session = get_session(request)
 
     # redirect if user is not logged in
@@ -828,7 +842,7 @@ def page_logout():
 
 # noinspection PyUnboundLocalVariable
 @app.route("/register.html", methods=["GET", "POST"])
-def page_register():
+def page_register() -> Union[str, Response]:
     # redirect if user is already logged in
     if get_session(request):
         return redirect("edit.html")
@@ -1007,13 +1021,14 @@ def page_register():
 
 
 @app.route("/verify.html", methods=["GET"])
-def page_verify_mail():
+def page_verify_mail() -> Union[str, Response]:
     session = get_session(request)
     countries = get_countries(request)
 
+    # redirect("index.html")
+    # return
+
     # verified sessions are good
-    redirect("index.html")
-    return
     if session and is_mail_verified(session[2]):
         print("verified")
         return render_template(
@@ -1036,7 +1051,7 @@ def page_verify_mail():
         if session:
             # unverified session without token -> send new mail
             user = get_user_by_id(session[2])
-            send_activate_mail_to(session[2], user["username"])
+            send_activate_mail_to(session[2], user[2])
             return render_template(
                 "edit.html",
                 session=session,
