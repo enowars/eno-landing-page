@@ -1,6 +1,7 @@
 # EnoTeams ![](https://tokei.rs/b1/github/enowars/eno-landing-page)
 CTF team registration page based on Flask, Gunicorn and Nginx.
 
+This landing page is no longer maintained, the new version is located at [EnoLandingPage](https://github.com/enowars/EnoLandingPage).
 
 Recommended Code Style: https://www.python.org/dev/peps/pep-0008/
 ## Development
